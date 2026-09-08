@@ -364,13 +364,13 @@ export function findContradiction(g: Grid): string | null {
       if (!u.some(i => g[i] === 0 && cand[i].includes(d))) return `digit ${d} has no place in the unit containing ${rc(u[0])}`;
     }
     const empt = u.filter(i => g[i] === 0);
-    for (let k = 2; k <= 4; k++) {
+    for (let k = 2; k <= 5; k++) {
       for (const cs of combosK(empt.length, k)) {
         const cells = cs.map(o => empt[o]);
         const uni = new Set(cells.flatMap(i => cand[i]));
         if (uni.size < k) return `${k} cells (${cells.map(rc).join(' ')}) hold only ${uni.size} digits`;
       }
-      for (const ds of combosK(9, k)) {
+      if (k <= 4) for (const ds of combosK(9, k)) {
         const digits = ds.map(x => x + 1);
         const places = empt.filter(i => cand[i].some(d => digits.includes(d)));
         if (places.length < k) return `digits ${digits.join('/')} confined to ${places.length} cells in the unit containing ${rc(u[0])}`;
