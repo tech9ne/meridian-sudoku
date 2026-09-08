@@ -43,6 +43,8 @@ export default function Sudoku() {
   const [msg, setMsg] = useState('');
   const [menu, setMenu] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [importModal, setImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
   const [wrong, setWrong] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<Set<number>>(new Set());
   const undoStack = useRef<{ v: Grid; m: Marks }[]>([]);
@@ -153,6 +155,7 @@ export default function Sudoku() {
               <button className={menuItem} onClick={autoCands}>Auto candidates</button>
               <button className={menuItem} onClick={clearMarks}>Clear marks</button>
               <button className={menuItem} onClick={() => { setShowMarks(s => !s); setMenu(false); }}>{showMarks ? 'Hide marks' : 'Show marks'}</button>
+              <button className={menuItem} onClick={() => { setImportModal(true); setMenu(false); }}>Import puzzle</button>
               <button className={menuItem} onClick={share}>Share puzzle</button>
             </div>
           </>

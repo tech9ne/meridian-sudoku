@@ -1,6 +1,6 @@
 export type Grid = number[];
 export type Diff = 'easy' | 'medium' | 'hard' | 'diabolical';
-export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
+export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
 export interface Hint {
   tech: Tech;
   desc: string;
@@ -374,6 +374,70 @@ export function findContradiction(g: Grid): string | null {
         const digits = ds.map(x => x + 1);
         const places = empt.filter(i => cand[i].some(d => digits.includes(d)));
         if (places.length < k) return `digits ${digits.join('/')} confined to ${places.length} cells in the unit containing ${rc(u[0])}`;
+      }
+    }
+  }
+  return null;
+}
+
+
+function nakedTripleStep(cand: number[][]): Hint | null {
+  for (const u of UNITS) {
+    const empt = u.filter(i => cand[i].length === 2 || cand[i].length === 3);
+    for (const cs of combosK(empt.length, 3)) {
+      const cells = cs.map(o => empt[o]);
+      const uni = new Set(cells.flatMap(i => cand[i]));
+      if (uni.size === 3) {
+        const elim: number[] = [];
+        for (const i of u) if (!cells.includes(i)) for (const d of uni) if (cand[i].includes(d)) elim.push(i);
+        if (elim.length) return { tech: 'naked-triple', desc: `Naked triple ${[...uni].sort().join('/')} locks those digits out of the unit.`, elim: { cells: elim, digits: [...uni] }, at: cells };
+      }
+    }
+  }
+  return null;
+}
+function hiddenTripleStep(cand: number[][]): Hint | null {
+  for (const u of UNITS) {
+    const digitCells: number[][] = Array.from({ length: 9 }, () => []);
+    for (const i of u) for (const d of cand[i]) if (!u.some(j => j !== i && cand[j].length === 1 && cand[j][0] === d)) digitCells[d - 1].push(i);
+    for (const ds of combosK(9, 3)) {
+      const digits = ds.map(x => x + 1);
+      const places = u.filter(i => digits.some(d => digitCells[d - 1].includes(i)) && !u.some(j => j !== i && cand[j].length === 1 && digits.includes(cand[j][0])));
+      if (places.length === 3) {
+        const elim: number[] = [];
+        for (const i of places) for (const d of cand[i]) if (!digits.includes(d)) elim.push(i);
+        if (elim.length) return { tech: 'hidden-triple', desc: `Hidden triple ${digits.join('/')} is confined to those cells.`, elim: { cells: elim, digits: [] }, at: places };
+      }
+    }
+  }
+  return null;
+}
+function nakedQuadStep(cand: number[][]): Hint | null {
+  for (const u of UNITS) {
+    const empt = u.filter(i => cand[i].length >= 2 && cand[i].length <= 4);
+    for (const cs of combosK(empt.length, 4)) {
+      const cells = cs.map(o => empt[o]);
+      const uni = new Set(cells.flatMap(i => cand[i]));
+      if (uni.size === 4) {
+        const elim: number[] = [];
+        for (const i of u) if (!cells.includes(i)) for (const d of uni) if (cand[i].includes(d)) elim.push(i);
+        if (elim.length) return { tech: 'naked-quad', desc: `Naked quad ${[...uni].sort().join('/')} locks those digits out of the unit.`, elim: { cells: elim, digits: [...uni] }, at: cells };
+      }
+    }
+  }
+  return null;
+}
+function hiddenQuadStep(cand: number[][]): Hint | null {
+  for (const u of UNITS) {
+    const digitCells: number[][] = Array.from({ length: 9 }, () => []);
+    for (const i of u) for (const d of cand[i]) if (!u.some(j => j !== i && cand[j].length === 1 && cand[j][0] === d)) digitCells[d - 1].push(i);
+    for (const ds of combosK(9, 4)) {
+      const digits = ds.map(x => x + 1);
+      const places = u.filter(i => digits.some(d => digitCells[d - 1].includes(i)) && !u.some(j => j !== i && cand[j].length === 1 && digits.includes(cand[j][0])));
+      if (places.length === 4) {
+        const elim: number[] = [];
+        for (const i of places) for (const d of cand[i]) if (!digits.includes(d)) elim.push(i);
+        if (elim.length) return { tech: 'hidden-quad', desc: `Hidden quad ${digits.join('/')} is confined to those cells.`, elim: { cells: elim, digits: [] }, at: places };
       }
     }
   }
