@@ -66,6 +66,10 @@ Finned/sashimi fish, mutant/Franken fish, general AICs beyond XY-chain, ALS-XY-w
 - **Four themes** via CSS variables: Meridian (copper), Midnight (blue/cyan), Forest (green/lime), Sepia (brown/amber).
 - **Box-gutter board**: nine 3×3 houses separated by colored gutters, with hairline cell separators — house boundaries cannot be mispositioned.
 
+## Independent Verification (`dlx-oracle.ts`)
+
+To prevent the generator from validating its own output, the repository includes a completely independent **Dancing Links (Algorithm X) exact-cover solver** (`dlx-oracle.ts`). This maps Sudoku to a 324-column, 729-row exact-cover matrix. The test harness cross-checks generated puzzles against this mathematically distinct solver to guarantee unique solvability and solution parity.
+
 ## Rebuild
 
 If you change the source, rebuild the bundle with Node ≥ 18 and esbuild:
