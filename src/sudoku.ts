@@ -131,7 +131,7 @@ export function gradeOf(puzzle: Grid): Diff {
     const t1 = techs.has('pointing') || techs.has('boxline') || techs.has('naked-pair') || techs.has('hidden-pair');
     return t1 ? 'medium' : 'easy';
   }
-  if (tier2Probe(cand)) return 'hard';
+  if (tier2Probe(cand, true)) return 'hard';
   return 'diabolical';
 }
 export const GIVENS: Record<Diff, [number, number]> = { easy: [40, 45], medium: [33, 39], hard: [28, 32], diabolical: [24, 28] };
@@ -168,7 +168,7 @@ export function generateGraded(target: Diff): { puzzle: Grid; solution: Grid; gr
   }
   return best!;
 }
-export function hintFor(g: Grid): Hint | null { return anyStep(allCandidates(g)); }
+export function hintFor(g: Grid): Hint | null { return anyStep(allCandidates(g), countSolutions([...g]) === 1); }
 export function encode(g: Grid): string { return g.map(v => (v ? String(v) : '.')).join(''); }
 export function decode(s: string): Grid | null { if (s.length !== 81) return null; const g = s.split('').map(ch => (ch >= '1' && ch <= '9' ? Number(ch) : 0)); return g.some(v => v) ? g : null; }
 
@@ -347,9 +347,35 @@ function forcingStep(cand: number[][]): Hint | null {
     for (const [key, n] of cnt) if (n === cand[i].length) { const [j, d] = key.split(':').map(Number); return { tech: 'forcing', desc: `Cell-forcing chain removes ${d} from R${RR(j) + 1}C${CC(j) + 1}.`, elim: { cells: [j], digits: [d] } }; } }
   return null;
 }
-function tier2Probe(cand: number[][]): Hint | null {
-  return fishStep(cand) || skyscraperStep(cand) || kiteStep(cand) || coloringStep(cand) || xywingStep(cand) || wwingStep(cand) || xyzwingStep(cand) || urStep(cand) || bugStep(cand);
+function tier2Probe(cand: number[][], uniq: boolean): Hint | null {
+  return fishStep(cand) || skyscraperStep(cand) || kiteStep(cand) || coloringStep(cand) || xywingStep(cand) || wwingStep(cand) || xyzwingStep(cand) || (uniq ? urStep(cand) || bugStep(cand) : null);
 }
-function anyStep(cand: number[][]): Hint | null {
-  return logicalStep(cand) || tier2Probe(cand) || xychainStep(cand) || alsxzStep(cand) || forcingStep(cand) || nishioStep(cand);
+function anyStep(cand: number[][], uniq: boolean): Hint | null {
+  return logicalStep(cand) || tier2Probe(cand, uniq) || xychainStep(cand) || alsxzStep(cand) || forcingStep(cand) || nishioStep(cand);
+}
+
+export function findContradiction(g: Grid): string | null {
+  const cand = allCandidates(g);
+  const rc = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
+  for (let i = 0; i < 81; i++) if (g[i] === 0 && cand[i].length === 0) return `${rc(i)} has no candidates left`;
+  for (const u of UNITS) {
+    for (let d = 1; d <= 9; d++) {
+      if (u.some(i => g[i] === d)) continue;
+      if (!u.some(i => g[i] === 0 && cand[i].includes(d))) return `digit ${d} has no place in the unit containing ${rc(u[0])}`;
+    }
+    const empt = u.filter(i => g[i] === 0);
+    for (let k = 2; k <= 4; k++) {
+      for (const cs of combosK(empt.length, k)) {
+        const cells = cs.map(o => empt[o]);
+        const uni = new Set(cells.flatMap(i => cand[i]));
+        if (uni.size < k) return `${k} cells (${cells.map(rc).join(' ')}) hold only ${uni.size} digits`;
+      }
+      for (const ds of combosK(9, k)) {
+        const digits = ds.map(x => x + 1);
+        const places = empt.filter(i => cand[i].some(d => digits.includes(d)));
+        if (places.length < k) return `digits ${digits.join('/')} confined to ${places.length} cells in the unit containing ${rc(u[0])}`;
+      }
+    }
+  }
+  return null;
 }

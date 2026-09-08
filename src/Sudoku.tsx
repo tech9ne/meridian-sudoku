@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCandidates, candidatesFor, encode } from '@/lib/sudoku';
+import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCandidates, candidatesFor, encode, findContradiction } from '@/lib/sudoku';
 
 const DIFFS: Diff[] = ['easy', 'medium', 'hard', 'diabolical'];
 type Marks = number[][];
@@ -97,9 +97,14 @@ export default function Sudoku() {
   };
   const autoCands = () => { snapshot(); setMarks(allCandidates(values)); setMenu(false); setMsg('Candidates calculated.'); };
   const clearMarks = () => { snapshot(); setMarks(emptyMarks()); setMenu(false); };
+  const conflictAt = (i: number) => { const d = values[i]; return d !== 0 && peersOf(i).some(p => values[p] === d); };
+  const hasConflict = () => values.some((v, i) => v !== 0 && conflictAt(i));
   const hint = () => {
+    if (hasConflict()) { setMsg('Invalid position: duplicate digit in a house — fix the red cells first.'); return; }
+    const contra = findContradiction(values);
+    if (contra) { setMsg(`No solution from here: ${contra}`); return; }
     const h = hintFor(values);
-    if (!h) { setMsg('No logical step left — this needs a chain or a guess.'); return; }
+    if (!h) { setMsg('No technique in the implemented ladder applies here; a longer chain or a guess may be needed.'); return; }
     snapshot();
     if (h.place) { const { cell, digit } = h.place; const ps = new Set(peersOf(cell)); setValues(v => { const n = [...v]; n[cell] = digit; return n; }); setMarks(m => m.map((c, i) => (i === cell ? [] : ps.has(i) ? c.filter(x => x !== digit) : c))); }
     else if (h.elim) { setMarks(m => m.map((c, i) => (h.elim!.cells.includes(i) ? c.filter(x => !h.elim!.digits.includes(x)) : c))); }
@@ -159,6 +164,7 @@ export default function Sudoku() {
       {msg && !won && <p className="font-mono text-[11px] text-copper max-w-md text-center">{msg}</p>}
       {won && <p className="font-mono text-sm uppercase tracking-widest text-green-500">Solved clean in {mm}:{ss}.</p>}
       {!running && !won && <p className="font-mono text-sm uppercase tracking-widest text-gray-500">Paused</p>}
+      {hasConflict() && <p className="font-mono text-[11px] text-alert uppercase tracking-widest">Invalid position: duplicate in a house — fix the red cells.</p>}
       <div className="sd-board grid grid-cols-3 gap-[3px] p-[3px] border-2" style={{ visibility: running || won ? 'visible' : 'hidden', backgroundColor: 'var(--sd-frame,#D97706)', borderColor: 'var(--sd-frame,#D97706)' }}>
         {[0,1,2,3,4,5,6,7,8].map(b => (
           <div key={b} className="grid grid-cols-3 gap-[1px] bg-ink-5">
@@ -172,9 +178,9 @@ export default function Sudoku() {
               return (
                 <button key={i} onClick={() => onCell(i)}
                   className={`sd-cell w-9 h-9 sm:w-10 sm:h-10 relative flex items-center justify-center font-mono text-sm font-bold ${flash.has(i) ? 'ring-2 ring-green-500 ring-inset' : sel === i ? 'ring-2 ring-copper ring-inset' : ''} transition`}
-                  style={{ backgroundColor: onOrange ? '#F7941D' : onRed ? '#E8112D' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? '#fff' : 'var(--sd-digit,#F5F1E8)' }}>
+                  style={{ backgroundColor: onOrange ? '#F7941D' : onRed ? '#E8112D' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? '#fff' : 'var(--sd-digit,#F5F1E8)' }}>
                   {v || ''}
-                  {wrong.has(i) && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-alert"></span>}
+                  {(wrong.has(i) || conflictAt(i)) && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-alert"></span>}
                   {!v && showMarks && marks[i].length > 0 && (
                     <span className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                       {[1,2,3,4,5,6,7,8,9].map(d => (
