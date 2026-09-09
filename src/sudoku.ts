@@ -1,4 +1,5 @@
 export type Grid = number[];
+import { hiddenStepM, fishStepM } from './spaces';
 export type Diff = 'easy' | 'medium' | 'hard' | 'diabolical';
 export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
 export interface Hint {
@@ -78,15 +79,12 @@ export function logicalStep(cand: number[][]): Hint | null {
       }
     }
   }
-  for (const u of UNITS) for (let d1 = 1; d1 <= 9; d1++) for (let d2 = d1 + 1; d2 <= 9; d2++) {
-    const c1 = u.filter(i => cand[i].includes(d1));
-    const c2 = u.filter(i => cand[i].includes(d2));
-    if (c1.length === 2 && c1[0] === c2[0] && c1[1] === c2[1]) {
-      const extra = c1.flatMap(i => cand[i].filter(x => x !== d1 && x !== d2));
-      if (extra.length) return { tech: 'hidden-pair', desc: `${d1}/${d2} confined to two cells — hidden pair.`, elim: { cells: c1, digits: [...new Set(extra)] } };
-    }
-  }
-  for (let bi = 0; bi < 9; bi++) {
+  const hp = hiddenStepM(cand, 2); if (hp) return hp;
+  const nt = nakedTripleStep(cand); if (nt) return nt;
+  const ht = hiddenStepM(cand, 3); if (ht) return ht;
+  const nq = nakedQuadStep(cand); if (nq) return nq;
+  const hq = hiddenStepM(cand, 4); if (hq) return hq;
+for (let bi = 0; bi < 9; bi++) {
     const box = BOXES[bi];
     for (let d = 1; d <= 9; d++) {
       const cells = box.filter(i => cand[i].includes(d));
@@ -179,7 +177,7 @@ const unitsOfI = (i: number) => UNITS.filter(u => u.includes(i));
 function combosK(n: number, k: number): number[][] { const out: number[][] = []; const cur: number[] = []; const rec = (st: number) => { if (cur.length === k) { out.push([...cur]); return; } for (let i = st; i < n; i++) { cur.push(i); rec(i + 1); cur.pop(); } }; rec(0); return out; }
 const LINECOMBOS = combosK(9, 2).concat(combosK(9, 3), combosK(9, 4));
 
-function fishStep(cand: number[][]): Hint | null {
+function fishStep_OLD(cand: number[][]): Hint | null {
   for (let d = 1; d <= 9; d++) for (const base of [0, 1]) {
     for (const set of LINECOMBOS) {
       const N = set.length; const cover = new Set<number>();
@@ -443,3 +441,27 @@ function hiddenQuadStep(cand: number[][]): Hint | null {
   }
   return null;
 }
+
+export function solveTrace(g: Grid): { tech: string; cells: number[]; digits: number[]; place: number[] | null }[] {
+  const values = [...g];
+  const cd = allCandidates(values);
+  const out: { tech: string; cells: number[]; digits: number[]; place: number[] | null }[] = [];
+  for (let guard = 0; guard < 300; guard++) {
+    if (values.every(v => v)) break;
+    const h = anyStep(cd, countSolutions([...values]) === 1);
+    if (!h) break;
+    out.push({ tech: h.tech, cells: (h.elim?.cells || []).slice().sort((a, b) => a - b), digits: (h.elim?.digits || []).slice().sort((a, b) => a - b), place: h.place ? [h.place.cell, h.place.digit] : null });
+    if (h.place) {
+      const pc = h.place.cell, pd = h.place.digit;
+      values[pc] = pd;
+      for (let i = 0; i < 81; i++) {
+        if (i === pc) { cd[i] = []; continue; }
+        if (PEERS[i].includes(pc)) cd[i] = cd[i].filter(d => d !== pd);
+      }
+    }
+    if (h.elim) for (const c of h.elim.cells) cd[c] = cd[c].filter(d => !h.elim!.digits.includes(d));
+  }
+  return out;
+}
+
+function fishStep(cand: number[][]): Hint | null { return fishStepM(cand); }
