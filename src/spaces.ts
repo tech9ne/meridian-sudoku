@@ -68,6 +68,9 @@ export function fishStepM(cand: number[][]): Hint | null {
       for (const base of combosIdx(k)) {
         let union = 0; for (const h of base) union |= M[h][d0];
         if (POPC[union] !== k) continue;
+        let valid = true;
+        for (const h of base) if (!(M[h][d0] & union)) { valid = false; break; }
+        if (!valid) continue;
         const cols = bits(union);
         const elim: number[] = [];
         for (const c0 of cols) for (let h = 0; h < 9; h++) if (!base.includes(h) && (M[h][d0] & (1 << c0))) elim.push(Rset[h][c0]);
@@ -76,6 +79,9 @@ export function fishStepM(cand: number[][]): Hint | null {
       for (const base of combosIdx(k)) {
         let union = 0; for (const c0 of base) union |= M[9 + c0][d0];
         if (POPC[union] !== k) continue;
+        let valid = true;
+        for (const c0 of base) if (!(M[9 + c0][d0] & union)) { valid = false; break; }
+        if (!valid) continue;
         const rows = bits(union);
         const elim: number[] = [];
         for (const r0 of rows) for (let c0 = 0; c0 < 9; c0++) if (!base.includes(c0) && (M[9 + c0][d0] & (1 << r0))) elim.push(Cset[c0][r0]);

@@ -224,15 +224,15 @@ function kiteStep(cand: number[][]): Hint | null {
 }
 function coloringStep(cand: number[][]): Hint | null {
   for (let d = 1; d <= 9; d++) {
-    const color = new Map<number, 0 | 1>(); const adj = new Map<number, number[]>();
+    const color = new Map<number, 0 | 1>(); const adj = new Map<number, number[]>(); const comp = new Map<number, number>(); let cid = 0;
     for (const u of UNITS) { const cs = u.filter(i => cand[i].includes(d)); if (cs.length === 2) { adj.set(cs[0], [...(adj.get(cs[0]) || []), cs[1]]); adj.set(cs[1], [...(adj.get(cs[1]) || []), cs[0]]); } }
-    let conflict: -1 | 0 | 1 = -1;
-    for (const st of adj.keys()) { if (color.has(st)) continue; color.set(st, 0); const q = [st];
-      while (q.length) { const cur = q.pop()!; for (const nb of adj.get(cur) || []) { const want = (1 - color.get(cur)!) as 0 | 1; if (color.has(nb)) { if (color.get(nb) !== want) conflict = color.get(nb)!; } else { color.set(nb, want); q.push(nb); } } } }
-    if (conflict !== -1) { const cells = [...color.entries()].filter(([, c]) => c === conflict).map(([i]) => i); if (cells.length) return { tech: 'coloring', desc: `Simple coloring on ${d}: a color self-contradicts.`, elim: { cells, digits: [d] } }; }
+    let conflict: -1 | 0 | 1 = -1; let conflictComp = -1;
+    for (const st of adj.keys()) { if (color.has(st)) continue; cid++; color.set(st, 0); comp.set(st, cid); const q = [st];
+      while (q.length) { const cur = q.pop()!; for (const nb of adj.get(cur) || []) { const want = (1 - color.get(cur)!) as 0 | 1; if (color.has(nb)) { if (color.get(nb) !== want) { conflict = color.get(nb)!; conflictComp = comp.get(cur)!; } } else { color.set(nb, want); comp.set(nb, cid); q.push(nb); } } } }
+    if (conflict !== -1) { const cells = [...color.entries()].filter(([j, c]) => c === conflict && comp.get(j) === conflictComp).map(([i]) => i); if (cells.length) return { tech: 'coloring', desc: `Simple coloring on ${d}: a color self-contradicts.`, elim: { cells, digits: [d] } }; }
     for (let i = 0; i < 81; i++) { if (!cand[i].includes(d) || color.has(i)) continue;
-      const s0 = [...color.entries()].some(([j, c]) => c === 0 && peersOf(i).includes(j)); const s1 = [...color.entries()].some(([j, c]) => c === 1 && peersOf(i).includes(j));
-      if (s0 && s1) return { tech: 'coloring', desc: `Simple coloring on ${d}: sees both colors.`, elim: { cells: [i], digits: [d] } }; }
+      const j0 = [...color.entries()].find(([j, c]) => c === 0 && peersOf(i).includes(j)); const j1 = [...color.entries()].find(([j, c]) => c === 1 && peersOf(i).includes(j));
+      if (j0 && j1 && comp.get(j0[0]) === comp.get(j1[0])) return { tech: 'coloring', desc: `Simple coloring on ${d}: sees both colors.`, elim: { cells: [i], digits: [d] } }; }
   }
   return null;
 }
@@ -296,10 +296,10 @@ function xychainStep(cand: number[][]): Hint | null {
     const stack: { node: number; path: number[]; links: number[] }[] = [{ node: start, path: [start], links: [] }];
     let guard = 0;
     while (stack.length && guard++ < 3000) { const { node, path, links } = stack.pop()!;
-      for (const nx of nbr(node)) { if (path.includes(nx)) continue; const L = cand[node].find(d => cand[nx].includes(d))!;
+      for (const nx of nbr(node)) { if (path.includes(nx)) continue; const L = cand[node].find(d => cand[nx].includes(d))!; if (path.length >= 2 && links[links.length - 1] === L) continue;
         const np = [...path, nx], nl = [...links, L];
         if (np.length >= 2) { const E1 = cand[start].find(d => d !== nl[0]); const E2 = cand[nx].find(d => d !== nl[nl.length - 1]);
-          if (E1 && E1 === E2) { const elim: number[] = []; for (let i = 0; i < 81; i++) if (i !== start && i !== nx && cand[i].includes(E1) && peersOf(i).includes(start) && peersOf(i).includes(nx)) elim.push(i);
+          if (E1 && E1 === E2) { const elim: number[] = []; for (let i = 0; i < 81; i++) if (!np.includes(i) && cand[i].includes(E1) && peersOf(i).includes(start) && peersOf(i).includes(nx)) elim.push(i);
             if (elim.length) return { tech: 'xy-chain', desc: `XY-chain removes ${E1}.`, elim: { cells: elim, digits: [E1] } }; } }
         if (np.length < 8) stack.push({ node: nx, path: np, links: nl }); } }
   }
@@ -321,13 +321,16 @@ function alsxzStep(cand: number[][]): Hint | null {
 }
 function assume(cand: number[][], cell: number, digit: number): number[][] | null {
   const c = cand.map(s => [...s]);
-  const place = (i: number, d: number): boolean => { if (!c[i].includes(d)) return false; c[i] = [d]; for (const p of peersOf(i)) { c[p] = c[p].filter(x => x !== d); if (!c[p].length) return false; } return true; };
+  const place = (i: number, d: number): boolean => { if (!c[i].includes(d)) return false; c[i] = [d]; for (const p of peersOf(i)) { if (!c[p].length) continue; c[p] = c[p].filter(x => x !== d); if (!c[p].length) return false; } return true; };
   if (!place(cell, digit)) return null;
   for (let iter = 0; iter < 90; iter++) { let prog = false;
     for (let i = 0; i < 81; i++) if (c[i].length === 1) { const d = c[i][0]; for (const p of peersOf(i)) if (c[p].length > 1) { c[p] = c[p].filter(x => x !== d); if (!c[p].length) return null; prog = true; } }
-    for (const u of UNITS) for (let d = 1; d <= 9; d++) { const sp = u.filter(i => c[i].includes(d));
-      if (!sp.length) { if (!u.some(i => c[i].length === 1 && c[i][0] === d)) return null; }
-      else if (sp.length === 1 && c[sp[0]].length > 1) { if (!place(sp[0], d)) return null; prog = true; } }
+    for (const u of UNITS) { const empt = u.filter(i => !c[i].length).length; let absent = 0; const hid: [number, number][] = [];
+      for (let d = 1; d <= 9; d++) { const sp = u.filter(i => c[i].includes(d));
+        if (!sp.length) absent++;
+        else if (sp.length === 1 && c[sp[0]].length > 1) hid.push([sp[0], d]); }
+      if (absent > empt) return null;
+      for (const [hi, hd] of hid) { if (!place(hi, hd)) return null; prog = true; } }
     if (!prog) break; }
   return c;
 }
