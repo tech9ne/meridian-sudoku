@@ -197,6 +197,40 @@ export default function Sudoku() {
           </div>
         ))}
       </div>
+      {importModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setImportModal(false)}>
+          <div className="bg-ink-2 border border-line rounded max-w-md w-full p-4 space-y-3" onClick={e => e.stopPropagation()}>
+            <h3 className="font-display font-bold text-white text-sm uppercase tracking-wide">Import puzzle</h3>
+            <p className="text-gray-400 text-xs font-mono">Paste an 81-char grid string (0 or . = empty, 1-9 = given) or a 729-char pencil-mark string.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6} className="w-full bg-ink-3 border border-line text-white font-mono text-xs p-2 outline-none focus:border-copper" placeholder="81 or 729 characters" />
+            <div className="flex gap-2">
+              <button onClick={() => {
+                const t = importText.trim();
+                if (t.length === 81) {
+                  const g = Array.from(t).map(c => c === '.' || c === '0' ? 0 : parseInt(c));
+                  const sol = solveFully(g);
+                  if (!sol) { setMsg('Invalid puzzle: no solution'); setImportModal(false); return; }
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(emptyMarks()); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                } else if (t.length === 729) {
+                  const g = new Array(81).fill(0);
+                  const m: number[][] = [];
+                  for (let i = 0; i < 81; i++) {
+                    const s9 = t.slice(i * 9, i * 9 + 9);
+                    const cands: number[] = [];
+                    for (let d = 0; d < 9; d++) if (s9[d] === '1') cands.push(d + 1);
+                    m.push(cands);
+                    if (cands.length === 1) g[i] = cands[0];
+                  }
+                  const sol = solveFully(g);
+                  if (!sol) { setMsg('Invalid pencil marks: no solution'); setImportModal(false); return; }
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(m); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                } else { setMsg('Invalid length: need 81 or 729 chars'); }
+              }} className="font-mono text-[10px] uppercase tracking-widest border border-copper text-copper px-4 py-2 hover:bg-copper hover:text-ink transition">Load</button>
+              <button onClick={() => setImportModal(false)} className="font-mono text-[10px] uppercase tracking-widest border border-line text-gray-300 px-4 py-2 hover:border-copper hover:text-copper transition">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="sd-pad flex gap-1.5 flex-wrap justify-center">
         {[1,2,3,4,5,6,7,8,9].map(d => (
           <button key={d} onClick={() => onPad(d)}
