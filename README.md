@@ -1,85 +1,40 @@
-# Meridian Sudoku
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A self-contained Sudoku player with a **Tier 0–3 logical hint engine**, built as part of the Meridian newsroom portfolio. Zero server, zero network calls, zero tracking — open `index.html` in any modern browser and play.
+## Getting Started
 
-## Play it
-
-Live at: [https://tech9ne.github.io/meridian-sudoku/](https://tech9ne.github.io/meridian-sudoku/)
-
-Or download `index.html` and run it offline. Theme choice persists in `localStorage`.
-
-## The engine (`src/sudoku.ts`)
-
-### Generator
-- Backtracking grid-fill followed by **iterative digging** that only accepts removals that preserve a unique solution (`countSolutions([...p]) === 1`).
-- **Grade-targeted digging**: for a requested difficulty, the generator refuses any removal that would push the puzzle's technique tier above the target, then keeps digging until the true grade *matches* the target (with retries across shuffles and a closest-match fallback for `diabolical`).
-- Share-via-URL: `?p=<81-char grid string>` encodes any puzzle.
-
-### Solver / hint engine
-The hint button applies the first matching technique from this ladder, reports it by name with `r#c#` board coordinates, and flashes the subject cells green for ~2.6 s.
-
-**Tier 0 — singles**
-- Naked single, hidden single
-
-**Tier 1 — basic elimination**
-- Naked pair, hidden pair
-- Pointing pairs (box→line)
-- Box/line reduction (claiming, line→box)
-
-**Tier 2 — pattern recognition**
-- Fish: X-wing / Swordfish / Jellyfish (sizes 2–4)
-- Skyscraper
-- Two-string kite
-- Simple coloring (conjugate chains, contradiction + both-colors-sees elimination)
-- XY-wing, W-wing, XYZ-wing
-- Unique rectangle (type 1)
-- BUG+1
-
-**Tier 3 — chains and sets**
-- XY-chain (length ≤ 8)
-- ALS-XZ
-- Cell-forcing chains
-- Nishio (assume-contradiction elimination, labeled as such)
-
-### Grading
-`gradeOf` runs the Tier 0+1 logical solver; if it stalls, probes Tier 2; if that also stalls, grades `diabolical`.
-
-| Grade | Required technique |
-|---|---|
-| Easy | Singles only |
-| Medium | Locked candidates or subsets |
-| Hard | A Tier-2 pattern |
-| Diabolical | Tier-2 stalls — chains, ALS, or guessing |
-
-### Not implemented (deliberately)
-Finned/sashimi fish, mutant/Franken fish, general AICs beyond XY-chain, ALS-XY-wing/deathblossom, set-logic/rank-0, guardians. These would extend the engine to Tier 4; the current ladder matches HoDoKu's "advanced" tier.
-
-## The player (`src/Sudoku.tsx`)
-
-- **Two input paradigms, explicit toggle:**
-  - *Digit-first* (default): tap a digit to arm, tap cells to stamp. Pad taps never write to a cell, eliminating the "stray tap overwrites correct entry" bug class.
-  - *Cell-first*: tap cell, tap digit. Each write deselects the cell — stray second taps are no-ops.
-- **Red/orange highlighting** from Enjoy Sudoku / Sudoku Joy: arm a digit → every cell where it is a candidate floods red; every placed instance of it turns orange. Fish, AICs, ALS become visible patterns.
-- **Live candidates** (default): pencil marks are maintained incrementally — placements prune peers, hints prune targets — so the red map, marks, and board never disagree. "Auto candidates" in the overflow menu remains as an explicit reset.
-- **Check** validates entered digits against the solution and flags only incorrect entries (red digit + corner dot) without revealing the right answer.
-- **Undo/redo** stack, pause, timer, hints with coordinates, share link.
-- **Four themes** via CSS variables: Meridian (copper), Midnight (blue/cyan), Forest (green/lime), Sepia (brown/amber).
-- **Box-gutter board**: nine 3×3 houses separated by colored gutters, with hairline cell separators — house boundaries cannot be mispositioned.
-
-## Independent Verification (`scripts/dlx-oracle.ts`)
-
-To prevent the generator from validating its own output, the repository includes a completely independent **Dancing Links (Algorithm X) exact-cover solver** (`scripts/dlx-oracle.ts`). This maps Sudoku to a 324-column, 729-row exact-cover matrix. The test harness cross-checks generated puzzles against this mathematically distinct solver to guarantee unique solvability and solution parity.
-
-## Rebuild
-
-If you change the source, rebuild the bundle with Node ≥ 18 and esbuild:
+First, run the development server:
 
 ```bash
-npm install
-npm run build            # produces Tailwind CSS in .next/static/css
-node standalone/build.js # inlines JS + CSS into sudoku-export/index.html
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## License / attribution
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Original code. The hint-engine technique names and logic follow the public Sudoku community canon (HoDoKu, SudokuWiki/Sudopedia, pencil-mark literature). The red/orange highlighting style is a nod to *Enjoy Sudoku* by Jason Lin (discontinued) — the technique outlives the app.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Attribution
+- Positional-space design (Rn/Cn/Bn), the complement ("twiddle") duality, and the cardinal lookup tables in `src/cardinals.ts` are after strmckr's StormDoku core, shared and taught directly in review, used with permission and attribution.
+- StormDoku GUI is not public software and is not used in this project.
