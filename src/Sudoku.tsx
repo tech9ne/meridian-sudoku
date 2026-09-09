@@ -44,6 +44,7 @@ export default function Sudoku() {
   const [menu, setMenu] = useState(false);
   const [busy, setBusy] = useState(false);
   const [importModal, setImportModal] = useState(false);
+  const [autoApply, setAutoApply] = useState(false);
   const [importText, setImportText] = useState('');
   const [wrong, setWrong] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<Set<number>>(new Set());
@@ -107,15 +108,17 @@ export default function Sudoku() {
     if (contra) { setMsg(`No solution from here: ${contra}`); return; }
     const h = hintFor(values);
     if (!h) { setMsg('No technique in the implemented ladder applies here; a longer chain or a guess may be needed.'); return; }
-    snapshot();
-    if (h.place) { const { cell, digit } = h.place; const ps = new Set(peersOf(cell)); setValues(v => { const n = [...v]; n[cell] = digit; return n; }); setMarks(m => m.map((c, i) => (i === cell ? [] : ps.has(i) ? c.filter(x => x !== digit) : c))); }
-    else if (h.elim) { setMarks(m => m.map((c, i) => (h.elim!.cells.includes(i) ? c.filter(x => !h.elim!.digits.includes(x)) : c))); }
+    if (autoApply) {
+      snapshot();
+      if (h.place) { const { cell, digit } = h.place; const ps = new Set(peersOf(cell)); setValues(v => { const n = [...v]; n[cell] = digit; return n; }); setMarks(m => m.map((c, i) => (i === cell ? [] : ps.has(i) ? c.filter(x => x !== digit) : c))); }
+      else if (h.elim) { setMarks(m => m.map((c, i) => (h.elim!.cells.includes(i) ? c.filter(x => !h.elim!.digits.includes(x)) : c))); }
+    }
     const subj = h.at && h.at.length ? h.at : h.place ? [h.place.cell] : h.elim ? h.elim.cells : [];
     const coord = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
     const loc = subj.slice(0, 6).map(coord).join(' ') + (subj.length > 6 ? ` +${subj.length - 6}` : '');
     setFlash(new Set(subj));
     setTimeout(() => setFlash(new Set()), 2600);
-    setMsg(`${h.tech}: ${h.desc}${loc ? ' → ' + loc : ''}`);
+    setMsg(`${autoApply ? 'Applied — ' : ''}${h.tech}: ${h.desc}${loc ? ' → ' + loc : ''}`);
   };
   const share = async () => { setMenu(false); const url = `${location.origin}/games/sudoku?p=${encode(puzzle)}`; try { await navigator.clipboard.writeText(url); setMsg('Puzzle link copied.'); } catch { setMsg(url); } };
 
@@ -155,6 +158,7 @@ export default function Sudoku() {
               <button className={menuItem} onClick={autoCands}>Auto candidates</button>
               <button className={menuItem} onClick={clearMarks}>Clear marks</button>
               <button className={menuItem} onClick={() => { setShowMarks(s => !s); setMenu(false); }}>{showMarks ? 'Hide marks' : 'Show marks'}</button>
+              <button className={menuItem} onClick={() => { setAutoApply(a => !a); setMenu(false); }}>Hint auto-apply: {autoApply ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setImportModal(true); setMenu(false); }}>Import puzzle</button>
               <button className={menuItem} onClick={share}>Share puzzle</button>
             </div>
