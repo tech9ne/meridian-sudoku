@@ -5,6 +5,7 @@ import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCa
 const DIFFS: Diff[] = ['easy', 'medium', 'hard', 'diabolical'];
 type Marks = number[][];
 const emptyMarks = (): Marks => Array.from({ length: 81 }, () => []);
+const emptyStrikes = (): Marks => Array.from({ length: 81 }, () => []);
 function Icon({ d, className }: { d: string; className?: string }) {
   return <svg viewBox="0 0 24 24" fill="currentColor" className={className || 'w-5 h-5'} aria-hidden="true"><path d={d} /></svg>;
 }
@@ -32,6 +33,8 @@ export default function Sudoku() {
   const [grade, setGrade] = useState<Diff | null>(shared ? null : gen.grade);
   const [values, setValues] = useState<Grid>([...(shared?.puzzle ?? gen.puzzle)]);
   const [marks, setMarks] = useState<Marks>(emptyMarks());
+  const [strikes, setStrikes] = useState<Marks>(emptyStrikes());
+  const [showStrikes, setShowStrikes] = useState(true);
   const [sel, setSel] = useState<number | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
   const [activeDigit, setActiveDigit] = useState<number | null>(null);
@@ -48,8 +51,8 @@ export default function Sudoku() {
   const [importText, setImportText] = useState('');
   const [wrong, setWrong] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<Set<number>>(new Set());
-  const undoStack = useRef<{ v: Grid; m: Marks }[]>([]);
-  const redoStack = useRef<{ v: Grid; m: Marks }[]>([]);
+  const undoStack = useRef<{ v: Grid; m: Marks; k: Marks }[]>([]);
+  const redoStack = useRef<{ v: Grid; m: Marks; k: Marks }[]>([]);
 
   const won = values.join('') === solution.join('');
   useEffect(() => { if (!running || won) return; const t = setInterval(() => setSecs(s => s + 1), 1000); return () => clearInterval(t); }, [running, won]);
@@ -65,16 +68,16 @@ export default function Sudoku() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const snapshot = () => { undoStack.current.push({ v: [...values], m: marks.map(x => [...x]) }); redoStack.current = []; };
-  const undo = () => { const s = undoStack.current.pop(); if (!s) return; redoStack.current.push({ v: [...values], m: marks.map(x => [...x]) }); setValues(s.v); setMarks(s.m); };
-  const redo = () => { const s = redoStack.current.pop(); if (!s) return; undoStack.current.push({ v: [...values], m: marks.map(x => [...x]) }); setValues(s.v); setMarks(s.m); };
+  const snapshot = () => { undoStack.current.push({ v: [...values], m: marks.map(x => [...x]), k: strikes.map(x => [...x]) }); redoStack.current = []; };
+  const undo = () => { const s = undoStack.current.pop(); if (!s) return; redoStack.current.push({ v: [...values], m: marks.map(x => [...x]), k: strikes.map(x => [...x]) }); setValues(s.v); setMarks(s.m); setStrikes(s.k); };
+  const redo = () => { const s = redoStack.current.pop(); if (!s) return; undoStack.current.push({ v: [...values], m: marks.map(x => [...x]), k: strikes.map(x => [...x]) }); setValues(s.v); setMarks(s.m); setStrikes(s.k); };
   const newPuzzle = (d: Diff) => {
     setBusy(true); setDiff(d); setMenu(false);
     setTimeout(() => {
       const g = generateGraded(d);
       setGen(g); setPuzzle(g.puzzle); setSolution(g.solution); setGrade(g.grade);
       setDiff(g.grade);
-      setValues([...g.puzzle]); setMarks(emptyMarks());
+      setValues([...g.puzzle]); setMarks(emptyMarks()); setStrikes(emptyStrikes());
       const fe = g.puzzle.findIndex(v => v === 0); setSel(fe >= 0 ? fe : null);
       setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(g.grade === d ? '' : `Requested ${d}; true grade is ${g.grade}.`); setWrong(new Set());
       undoStack.current = []; redoStack.current = []; setBusy(false);
@@ -88,7 +91,7 @@ export default function Sudoku() {
     if (notes) setMarks(m => m.map((cell, k) => (k === i ? (cell.includes(d) ? cell.filter(x => x !== d) : [...cell, d].sort()) : cell)));
     else { setValues(v => { const n = [...v]; n[i] = d; return n; }); const ps = new Set(peersOf(i)); setMarks(m => m.map((cell, k) => (k === i ? [] : ps.has(k) ? cell.filter(x => x !== d) : cell))); }
   };
-  const erase = () => { if (sel === null || puzzle[sel] !== 0) return; snapshot(); setValues(v => { const n = [...v]; n[sel] = 0; return n; }); setMarks(m => m.map((c, i) => (i === sel ? [] : c))); setWrong(w => { const n = new Set(w); if (sel !== null) n.delete(sel); return n; }); };
+  const erase = () => { if (sel === null || puzzle[sel] !== 0) return; snapshot(); setValues(v => { const n = [...v]; n[sel] = 0; return n; }); setMarks(m => m.map((c, i) => (i === sel ? [] : c))); setStrikes(st => st.map((c, i) => (i === sel ? [] : c))); setWrong(w => { const n = new Set(w); if (sel !== null) n.delete(sel); return n; }); };
   const onPad = (d: number) => {
     if (mode === 'digit') { if (activeDigit === d) { setActiveDigit(null); setFocus(null); } else { setActiveDigit(d); setFocus(d); } }
     else { if (sel !== null) { writeCell(sel, d); setSel(null); } }
@@ -98,8 +101,8 @@ export default function Sudoku() {
     if (mode === 'digit') { if (activeDigit !== null) { writeCell(i, activeDigit); setSel(i); setFocus(activeDigit); } else setSel(i); }
     else { setSel(i); setFocus(values[i] || null); }
   };
-  const autoCands = () => { snapshot(); setMarks(allCandidates(values)); setMenu(false); setMsg('Candidates calculated.'); };
-  const clearMarks = () => { snapshot(); setMarks(emptyMarks()); setMenu(false); };
+  const autoCands = () => { snapshot(); setMarks(allCandidates(values)); setStrikes(emptyStrikes()); setMenu(false); setMsg('Candidates calculated.'); };
+  const clearMarks = () => { snapshot(); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setMenu(false); };
   const conflictAt = (i: number) => { const d = values[i]; return d !== 0 && peersOf(i).some(p => values[p] === d); };
   const hasConflict = () => values.some((v, i) => v !== 0 && conflictAt(i));
   const hint = () => {
@@ -108,14 +111,16 @@ export default function Sudoku() {
     if (contra) { setMsg(`No solution from here: ${contra}`); return; }
     const h = hintFor(values);
     if (!h) { setMsg('No technique in the implemented ladder applies here; a longer chain or a guess may be needed.'); return; }
+    snapshot();
     if (autoApply) {
-      snapshot();
       if (h.place) { const { cell, digit } = h.place; const ps = new Set(peersOf(cell)); setValues(v => { const n = [...v]; n[cell] = digit; return n; }); setMarks(m => m.map((c, i) => (i === cell ? [] : ps.has(i) ? c.filter(x => x !== digit) : c))); }
       else if (h.elim) { setMarks(m => m.map((c, i) => (h.elim!.cells.includes(i) ? c.filter(x => !h.elim!.digits.includes(x)) : c))); }
     }
     const subj = h.at && h.at.length ? h.at : h.place ? [h.place.cell] : h.elim ? h.elim.cells : [];
     const coord = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
     const loc = subj.slice(0, 6).map(coord).join(' ') + (subj.length > 6 ? ` +${subj.length - 6}` : '');
+    if (h.elim) setStrikes(st => st.map((c, i) => (h.elim!.cells.includes(i) ? [...new Set([...c, ...h.elim!.digits])] : c)));
+    else if (h.place && autoApply) { const pc = h.place.cell, pd = h.place.digit; const ps2 = new Set(peersOf(pc)); setStrikes(st => st.map((c, i) => (i !== pc && ps2.has(i) && marks[i].includes(pd) ? [...new Set([...c, pd])] : c))); }
     setFlash(new Set(subj));
     setTimeout(() => setFlash(new Set()), 2600);
     setMsg(`${autoApply ? 'Applied — ' : ''}${h.tech}: ${h.desc}${loc ? ' → ' + loc : ''}`);
@@ -158,6 +163,7 @@ export default function Sudoku() {
               <button className={menuItem} onClick={autoCands}>Auto candidates</button>
               <button className={menuItem} onClick={clearMarks}>Clear marks</button>
               <button className={menuItem} onClick={() => { setShowMarks(s => !s); setMenu(false); }}>{showMarks ? 'Hide marks' : 'Show marks'}</button>
+              <button className={menuItem} onClick={() => { setShowStrikes(x => !x); setMenu(false); }}>Strikethrough: {showStrikes ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setAutoApply(a => !a); setMenu(false); }}>Hint auto-apply: {autoApply ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setImportModal(true); setMenu(false); }}>Import puzzle</button>
               <button className={menuItem} onClick={share}>Share puzzle</button>
@@ -188,10 +194,10 @@ export default function Sudoku() {
                   style={{ backgroundColor: onOrange ? '#F7941D' : onRed ? '#E8112D' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? '#fff' : 'var(--sd-digit,#F5F1E8)' }}>
                   {v || ''}
                   {(wrong.has(i) || conflictAt(i)) && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-alert"></span>}
-                  {!v && showMarks && marks[i].length > 0 && (
+                  {!v && showMarks && (marks[i].length > 0 || (showStrikes && strikes[i].length > 0)) && (
                     <span className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                       {[1,2,3,4,5,6,7,8,9].map(d => (
-                        <span key={d} className="sd-mark flex items-center justify-center text-[8px]" style={{ color: onRed || onOrange ? '#fff' : 'var(--sd-mark,#A8A29E)' }}>{marks[i].includes(d) ? d : ''}</span>
+                        <span key={d} className={"sd-mark flex items-center justify-center text-[8px]" + (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? " line-through opacity-60" : "")} style={{ color: onRed || onOrange ? '#fff' : (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? 'var(--sd-struck,#991b1b)' : 'var(--sd-mark,#A8A29E)') }}>{marks[i].includes(d) || (showStrikes && strikes[i].includes(d)) ? d : ''}</span>
                       ))}
                     </span>
                   )}
@@ -214,7 +220,7 @@ export default function Sudoku() {
                   const g = Array.from(t).map(c => c === '.' || c === '0' ? 0 : parseInt(c));
                   const sol = solveFully(g);
                   if (!sol) { setMsg('Invalid puzzle: no solution'); setImportModal(false); return; }
-                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(emptyMarks()); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
                 } else if (t.length === 729) {
                   const g = new Array(81).fill(0);
                   const m: number[][] = [];
@@ -227,7 +233,7 @@ export default function Sudoku() {
                   }
                   const sol = solveFully(g);
                   if (!sol) { setMsg('Invalid pencil marks: no solution'); setImportModal(false); return; }
-                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(m); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(m); setStrikes(emptyStrikes()); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
                 } else { setMsg('Invalid length: need 81 or 729 chars'); }
               }} className="font-mono text-[10px] uppercase tracking-widest border border-copper text-copper px-4 py-2 hover:bg-copper hover:text-ink transition">Load</button>
               <button onClick={() => setImportModal(false)} className="font-mono text-[10px] uppercase tracking-widest border border-line text-gray-300 px-4 py-2 hover:border-copper hover:text-copper transition">Cancel</button>
