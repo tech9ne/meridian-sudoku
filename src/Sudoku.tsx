@@ -45,6 +45,7 @@ export default function Sudoku() {
   const [linkSource, setLinkSource] = useState<{ cell: number; digit: number } | null>(null);
   const [linkKind, setLinkKind] = useState<'strong' | 'weak'>('strong');
   const [arrowStyle, setArrowStyle] = useState<'colored' | 'red'>('colored');
+  const [highlightColor, setHighlightColor] = useState<'green' | 'red'>('green');
   const boardRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(36);
   useEffect(() => { const measure = () => { if (boardRef.current) { const cell = boardRef.current.querySelector('.sd-cell'); if (cell) setCellSize(cell.getBoundingClientRect().width); } }; measure(); window.addEventListener('resize', measure); return () => window.removeEventListener('resize', measure); }, []);
@@ -181,6 +182,7 @@ export default function Sudoku() {
               <button className={menuItem} onClick={() => { setArrowMode(x => !x); setLinkSource(null); setMenu(false); }}>Arrow mode: {arrowMode ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setLinkKind(k => k === 'strong' ? 'weak' : 'strong'); setMenu(false); }}>Link kind: {linkKind}</button>
               <button className={menuItem} onClick={() => { setArrowStyle(x => x === 'colored' ? 'red' : 'colored'); setMenu(false); }}>Arrow style: {arrowStyle}</button>
+              <button className={menuItem} onClick={() => { setHighlightColor(x => x === 'green' ? 'red' : 'green'); setMenu(false); }}>Highlight: {highlightColor}</button>
               <button className={menuItem} onClick={() => { snapshot(); setLinks([]); setLinkSource(null); setMenu(false); }}>Clear arrows</button>
               <button className={menuItem} onClick={() => { snapshot(); setColors(emptyColors()); setNextColor(1); setMenu(false); }}>Clear colors</button>
               <button className={menuItem} onClick={() => { setShowStrikes(x => !x); setMenu(false); }}>Strikethrough: {showStrikes ? 'on' : 'off'}</button>
@@ -230,7 +232,7 @@ export default function Sudoku() {
               return (
                 <button key={i} onClick={() => onCell(i)}
                   className={`sd-cell w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 relative flex items-center justify-center font-mono text-sm md:text-base lg:text-lg xl:text-xl font-bold ${flash.has(i) ? 'ring-2 ring-green-500 ring-inset' : sel === i ? 'ring-2 ring-copper ring-inset' : ''} transition`}
-                  style={{ backgroundColor: onOrange ? 'var(--sd-active,#F7941D)' : onRed ? 'var(--sd-focus,#E8112D)' : flash.has(i) ? 'var(--sd-flash,transparent)' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? 'var(--sd-wash-text,#fff)' : puzzle[i] ? 'var(--sd-given,var(--sd-digit,#F5F1E8))' : 'var(--sd-entered,var(--sd-digit,#F5F1E8))' }}>
+                  style={{ backgroundColor: onOrange ? 'var(--sd-active,#F7941D)' : onRed ? (highlightColor === 'red' ? 'var(--sd-focus-red,#E8112D)' : 'var(--sd-focus-green,var(--sd-focus,#14532D))') : flash.has(i) ? 'var(--sd-flash,transparent)' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? 'var(--sd-wash-text,#fff)' : puzzle[i] ? 'var(--sd-given,var(--sd-digit,#F5F1E8))' : 'var(--sd-entered,var(--sd-digit,#F5F1E8))' }}>
                   {v || ''}
                   {(wrong.has(i) || conflictAt(i)) && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-alert"></span>}
                   {arrowMode && linkSource && linkSource.cell === i && <span className="absolute inset-0 ring-2 ring-cyan-400 ring-inset pointer-events-none"></span>}
