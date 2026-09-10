@@ -91,3 +91,79 @@ export function fishStepM(cand: number[][]): Hint | null {
   }
   return null;
 }
+
+export interface FindEntry {
+  kind: 'naked' | 'hidden';
+  dof: number;
+  origin: number;
+  applicable: number[];
+  cells: number[];
+  digits: number[];
+  elimCells: number[];
+  elimDigits: number[];
+}
+
+const BANDS = [7, 56, 448];
+const BOXCOLS = [73, 146, 292];
+const inBand = (m: number) => m !== 0 && ((m & 7) === m || (m & 56) === m || (m & 448) === m);
+const cellsOfH = (h: number) => (h < 9 ? Rset[h] : h < 18 ? Cset[h - 9] : Bset[h - 18]);
+
+// Find-all after StrmCkr's ownership-dedup design: naked subsets dedup by
+// band-skip (dof is cell-set intrinsic, so box sweep re-finds RC-contained
+// sets); hidden subsets dedup post-hoc by cell-set key with box-first sweep
+// order, because hidden confinement is house-relative and band-skip would
+// lose entries. Dual-sector entries list every applicable house and cycle
+// elims across all of them.
+export function findAll(cand: number[][], maxDof = 3): FindEntry[] {
+  const { M } = buildSpaces(cand);
+  const Cm = new Array(81).fill(0);
+  for (let i = 0; i < 81; i++) for (const d of cand[i]) Cm[i] |= 1 << (d - 1);
+  const out: FindEntry[] = [];
+  const seen = new Map<string, FindEntry>();
+  for (let h = 0; h < 27; h++) {
+    const cellsOf = cellsOfH(h);
+    const union = new Int16Array(512);
+    for (let m = 1; m < 512; m++) union[m] = union[m & (m - 1)] | Cm[cellsOf[IDX[m & -m]]];
+    for (let m = 3; m < 512; m++) {
+      const n = POPC[m];
+      const u = union[m];
+      const dof = POPC[u] - n;
+      if (dof < 0 || dof > maxDof) continue;
+      if (h < 18 && inBand(m)) continue;
+      const applicable = [h];
+      if (h >= 18) {
+        const b = h - 18;
+        for (let j = 0; j < 3; j++) if ((m & BANDS[j]) === m) applicable.push(((b / 3) | 0) * 3 + j);
+        for (let j = 0; j < 3; j++) if ((m & BOXCOLS[j]) === m) applicable.push(9 + (b % 3) * 3 + j);
+      }
+      const cells = bits(m).map(p => cellsOf[p]);
+      const digits = bits(u).map(x => x + 1);
+      const inS = new Set(cells);
+      const elimCells: number[] = [];
+      for (const A of applicable) { const co = cellsOfH(A); for (let p = 0; p < 9; p++) if (!inS.has(co[p])) elimCells.push(co[p]); }
+      out.push({ kind: 'naked', dof, origin: h, applicable, cells, digits, elimCells, elimDigits: digits });
+    }
+  }
+  for (let h = 26; h >= 0; h--) {
+    const cellsOf = cellsOfH(h);
+    const pun = new Int16Array(512);
+    for (let m = 1; m < 512; m++) pun[m] = pun[m & (m - 1)] | M[h][IDX[m & -m]];
+    for (let m = 3; m < 512; m++) {
+      const k = POPC[m];
+      const pos = pun[m];
+      if (!pos) continue;
+      const dof = POPC[pos] - k;
+      if (dof < 0 || dof > maxDof) continue;
+      const cells = bits(pos).map(p => cellsOf[p]);
+      const digits = bits(m).map(x => x + 1);
+      const key = 'h|' + cells.join(',') + '|' + digits.join(',');
+      const prev = seen.get(key);
+      if (prev) { if (!prev.applicable.includes(h)) prev.applicable.push(h); continue; }
+      const rem = [...new Set(cells.flatMap(i => cand[i].filter(d => !digits.includes(d))))];
+      const e: FindEntry = { kind: 'hidden', dof, origin: h, applicable: [h], cells, digits, elimCells: cells, elimDigits: rem };
+      seen.set(key, e);
+      out.push(e);
+    }
+  }
+  return out;
+}
