@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCandidates, candidatesFor, encode, findContradiction } from '@/lib/sudoku';
+import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCandidates, candidatesFor, encode, findContradiction, colorChains } from '@/lib/sudoku';
 
 const DIFFS: Diff[] = ['easy', 'medium', 'hard', 'diabolical'];
 type Marks = number[][];
@@ -39,6 +39,7 @@ export default function Sudoku() {
   const [colors, setColors] = useState<number[][]>(emptyColors());
   const [colorMode, setColorMode] = useState(false);
   const [nextColor, setNextColor] = useState<0 | 1>(0);
+  const [chainMode, setChainMode] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
   const [activeDigit, setActiveDigit] = useState<number | null>(null);
@@ -168,6 +169,7 @@ export default function Sudoku() {
               <button className={menuItem} onClick={clearMarks}>Clear marks</button>
               <button className={menuItem} onClick={() => { setShowMarks(s => !s); setMenu(false); }}>{showMarks ? 'Hide marks' : 'Show marks'}</button>
               <button className={menuItem} onClick={() => { setColorMode(x => !x); setMenu(false); }}>Color mode: {colorMode ? 'on' : 'off'}</button>
+              <button className={menuItem} onClick={() => { setChainMode(x => !x); setMenu(false); }}>Chain paint: {chainMode ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { snapshot(); setColors(emptyColors()); setNextColor(0); setMenu(false); }}>Clear colors</button>
               <button className={menuItem} onClick={() => { setShowStrikes(x => !x); setMenu(false); }}>Strikethrough: {showStrikes ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setAutoApply(a => !a); setMenu(false); }}>Hint auto-apply: {autoApply ? 'on' : 'off'}</button>
@@ -203,7 +205,7 @@ export default function Sudoku() {
                   {!v && showMarks && (marks[i].length > 0 || (showStrikes && strikes[i].length > 0) || colors[i].some(c => c >= 0) || colorMode) && (
                     <span className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                       {[1,2,3,4,5,6,7,8,9].map(d => (
-                        <span key={d} onClick={(ev) => { if (!colorMode) return; ev.stopPropagation(); snapshot(); const cc = nextColor; setColors(cs => cs.map((row, j) => (j === i ? row.map((c, x) => (x === d - 1 ? cc : c)) : row))); setNextColor(cc === 0 ? 1 : 0); }} className={"sd-mark flex items-center justify-center text-[8px]" + (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? " line-through opacity-60" : "")} style={{ color: onRed || onOrange ? '#fff' : (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? 'var(--sd-struck,#991b1b)' : 'var(--sd-mark,#A8A29E)'), backgroundColor: colors[i][d - 1] === 0 ? 'var(--sd-colA,#14532d)' : colors[i][d - 1] === 1 ? 'var(--sd-colB,#0c4a6e)' : undefined, pointerEvents: colorMode ? 'auto' : 'none' }}>{marks[i].includes(d) || (showStrikes && strikes[i].includes(d)) || colors[i][d - 1] >= 0 || (colorMode && (marks[i].length ? marks[i].includes(d) : candidatesFor(values, i).includes(d))) ? d : ''}</span>
+                        <span key={d} onClick={(ev) => { if (!colorMode) return; ev.stopPropagation(); snapshot(); const cc = nextColor; if (chainMode) { const ch = colorChains(allCandidates(values), i, d); if (!ch) { setMsg('No conjugate chain through this candidate.'); return; } if (ch.conflict) { setMsg('Odd cycle: this chain self-contradicts — one color dies.'); return; } const other = cc === 0 ? 1 : 0; setColors(cs => cs.map((row, j) => (ch.colorOf[j] >= 0 ? row.map((c, x) => (x === d - 1 ? (ch.colorOf[j] === 0 ? cc : other) : c)) : row))); setNextColor(other); return; } setColors(cs => cs.map((row, j) => (j === i ? row.map((c, x) => (x === d - 1 ? cc : c)) : row))); setNextColor(cc === 0 ? 1 : 0); }} className={"sd-mark flex items-center justify-center text-[8px]" + (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? " line-through opacity-60" : "")} style={{ color: onRed || onOrange ? '#fff' : (showStrikes && !marks[i].includes(d) && strikes[i].includes(d) ? 'var(--sd-struck,#991b1b)' : 'var(--sd-mark,#A8A29E)'), backgroundColor: colors[i][d - 1] === 0 ? 'var(--sd-colA,#14532d)' : colors[i][d - 1] === 1 ? 'var(--sd-colB,#0c4a6e)' : undefined, pointerEvents: colorMode ? 'auto' : 'none' }}>{marks[i].includes(d) || (showStrikes && strikes[i].includes(d)) || colors[i][d - 1] >= 0 || (colorMode && (marks[i].length ? marks[i].includes(d) : candidatesFor(values, i).includes(d))) ? d : ''}</span>
                       ))}
                     </span>
                   )}
