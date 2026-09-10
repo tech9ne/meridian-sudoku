@@ -55,8 +55,8 @@ export default function Sudoku() {
   const [importText, setImportText] = useState('');
   const [wrong, setWrong] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<Set<number>>(new Set());
-  const undoStack = useRef<{ v: Grid; m: Marks; k: Marks; c: number[][]; n: number }[]>([]);
-  const redoStack = useRef<{ v: Grid; m: Marks; k: Marks; c: number[][]; n: number }[]>([]);
+  const undoStack = useRef<{ v: Grid; m: Marks; k: Marks; c: number[][]; n: 0 | 1 }[]>([]);
+  const redoStack = useRef<{ v: Grid; m: Marks; k: Marks; c: number[][]; n: 0 | 1 }[]>([]);
 
   const won = values.join('') === solution.join('');
   useEffect(() => { if (!running || won) return; const t = setInterval(() => setSecs(s => s + 1), 1000); return () => clearInterval(t); }, [running, won]);
