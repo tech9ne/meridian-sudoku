@@ -217,7 +217,7 @@ export default function Sudoku() {
               const fromColor = colors[lk.fromCell][lk.fromDigit - 1];
               const toColor = colors[lk.toCell][lk.toDigit - 1];
               const strokeColor = arrowStyle === 'red' ? '#E8112D' : fromColor === 0 ? 'var(--sd-colA,#14532d)' : fromColor === 1 ? 'var(--sd-colB,#0c4a6e)' : toColor === 0 ? 'var(--sd-colA,#14532d)' : toColor === 1 ? 'var(--sd-colB,#0c4a6e)' : '#A8A29E';
-              const ang = Math.atan2(y2 - y1, x2 - x1); const hl = arrowStyle === 'red' ? 13 : 9; const hx1 = x2 - hl * Math.cos(ang - 0.5), hy1 = y2 - hl * Math.sin(ang - 0.5); const hx2 = x2 - hl * Math.cos(ang + 0.5), hy2 = y2 - hl * Math.sin(ang + 0.5); return <g key={idx}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={arrowStyle === 'red' ? (lk.kind === 'strong' ? 3.5 : 2) : 2} strokeDasharray={lk.kind === 'weak' ? (arrowStyle === 'red' ? '0.5,7' : '5,3') : undefined} /><polygon points={`${x2},${y2} ${hx1},${hy1} ${hx2},${hy2}`} fill={strokeColor} /></g>;
+              const ang = Math.atan2(y2 - y1, x2 - x1); const hl = arrowStyle === 'red' ? 13 : 9; const hx1 = x2 - hl * Math.cos(ang - 0.5), hy1 = y2 - hl * Math.sin(ang - 0.5); const hx2 = x2 - hl * Math.cos(ang + 0.5), hy2 = y2 - hl * Math.sin(ang + 0.5); return <g key={idx}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={arrowStyle === 'red' ? (lk.kind === 'strong' ? 3.5 : 3) : 2} strokeDasharray={lk.kind === 'weak' ? (arrowStyle === 'red' ? '0.1,6.5' : '5,3') : undefined} /><polygon points={`${x2},${y2} ${hx1},${hy1} ${hx2},${hy2}`} fill={strokeColor} /></g>;
             })}
           </svg>
           {[0,1,2,3,4,5,6,7,8].map(b => (
