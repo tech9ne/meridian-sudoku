@@ -38,12 +38,13 @@ export default function Sudoku() {
   const [showStrikes, setShowStrikes] = useState(true);
   const [colors, setColors] = useState<number[][]>(emptyColors());
   const [colorMode, setColorMode] = useState(false);
-  const [nextColor, setNextColor] = useState<0 | 1>(0);
+  const [nextColor, setNextColor] = useState<0 | 1>(1);
   const [chainMode, setChainMode] = useState(false);
   const [links, setLinks] = useState<{ fromCell: number; fromDigit: number; toCell: number; toDigit: number; kind: 'strong' | 'weak' }[]>([]);
   const [arrowMode, setArrowMode] = useState(false);
   const [linkSource, setLinkSource] = useState<{ cell: number; digit: number } | null>(null);
   const [linkKind, setLinkKind] = useState<'strong' | 'weak'>('strong');
+  const [arrowStyle, setArrowStyle] = useState<'colored' | 'red'>('colored');
   const boardRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(36);
   useEffect(() => { const measure = () => { if (boardRef.current) { const cell = boardRef.current.querySelector('.sd-cell'); if (cell) setCellSize(cell.getBoundingClientRect().width); } }; measure(); window.addEventListener('resize', measure); return () => window.removeEventListener('resize', measure); }, []);
@@ -89,7 +90,7 @@ export default function Sudoku() {
       const g = generateGraded(d);
       setGen(g); setPuzzle(g.puzzle); setSolution(g.solution); setGrade(g.grade);
       setDiff(g.grade);
-      setValues([...g.puzzle]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setLinks([]); setLinkSource(null); setNextColor(0);
+      setValues([...g.puzzle]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setLinks([]); setLinkSource(null); setNextColor(1);
       const fe = g.puzzle.findIndex(v => v === 0); setSel(fe >= 0 ? fe : null);
       setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(g.grade === d ? '' : `Requested ${d}; true grade is ${g.grade}.`); setWrong(new Set());
       undoStack.current = []; redoStack.current = []; setBusy(false);
@@ -113,8 +114,8 @@ export default function Sudoku() {
     if (mode === 'digit') { if (activeDigit !== null) { writeCell(i, activeDigit); setSel(i); setFocus(activeDigit); } else setSel(i); }
     else { setSel(i); setFocus(values[i] || null); }
   };
-  const autoCands = () => { snapshot(); setMarks(allCandidates(values)); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(0); setLinks([]); setLinkSource(null); setMenu(false); setMsg('Candidates calculated.'); };
-  const clearMarks = () => { snapshot(); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(0); setLinks([]); setLinkSource(null); setMenu(false); };
+  const autoCands = () => { snapshot(); setMarks(allCandidates(values)); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(1); setLinks([]); setLinkSource(null); setMenu(false); setMsg('Candidates calculated.'); };
+  const clearMarks = () => { snapshot(); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(1); setLinks([]); setLinkSource(null); setMenu(false); };
   const conflictAt = (i: number) => { const d = values[i]; return d !== 0 && peersOf(i).some(p => values[p] === d); };
   const hasConflict = () => values.some((v, i) => v !== 0 && conflictAt(i));
   const hint = () => {
@@ -179,8 +180,9 @@ export default function Sudoku() {
               <button className={menuItem} onClick={() => { setChainMode(x => !x); setMenu(false); }}>Chain paint: {chainMode ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setArrowMode(x => !x); setLinkSource(null); setMenu(false); }}>Arrow mode: {arrowMode ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setLinkKind(k => k === 'strong' ? 'weak' : 'strong'); setMenu(false); }}>Link kind: {linkKind}</button>
+              <button className={menuItem} onClick={() => { setArrowStyle(x => x === 'colored' ? 'red' : 'colored'); setMenu(false); }}>Arrow style: {arrowStyle}</button>
               <button className={menuItem} onClick={() => { snapshot(); setLinks([]); setLinkSource(null); setMenu(false); }}>Clear arrows</button>
-              <button className={menuItem} onClick={() => { snapshot(); setColors(emptyColors()); setNextColor(0); setMenu(false); }}>Clear colors</button>
+              <button className={menuItem} onClick={() => { snapshot(); setColors(emptyColors()); setNextColor(1); setMenu(false); }}>Clear colors</button>
               <button className={menuItem} onClick={() => { setShowStrikes(x => !x); setMenu(false); }}>Strikethrough: {showStrikes ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setAutoApply(a => !a); setMenu(false); }}>Hint auto-apply: {autoApply ? 'on' : 'off'}</button>
               <button className={menuItem} onClick={() => { setImportModal(true); setMenu(false); }}>Import puzzle</button>
@@ -212,12 +214,12 @@ export default function Sudoku() {
               const x2 = candX(lk.toCell, lk.toDigit), y2 = candY(lk.toCell, lk.toDigit);
               const fromColor = colors[lk.fromCell][lk.fromDigit - 1];
               const toColor = colors[lk.toCell][lk.toDigit - 1];
-              const strokeColor = fromColor === 0 ? 'var(--sd-colA,#14532d)' : fromColor === 1 ? 'var(--sd-colB,#0c4a6e)' : toColor === 0 ? 'var(--sd-colA,#14532d)' : toColor === 1 ? 'var(--sd-colB,#0c4a6e)' : '#A8A29E';
-              const ang = Math.atan2(y2 - y1, x2 - x1); const hl = 7; const hx1 = x2 - hl * Math.cos(ang - 0.45), hy1 = y2 - hl * Math.sin(ang - 0.45); const hx2 = x2 - hl * Math.cos(ang + 0.45), hy2 = y2 - hl * Math.sin(ang + 0.45); return <g key={idx}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth="2" strokeDasharray={lk.kind === 'weak' ? '4,2' : undefined} /><polygon points={`${x2},${y2} ${hx1},${hy1} ${hx2},${hy2}`} fill={strokeColor} /></g>;
+              const strokeColor = arrowStyle === 'red' ? '#E8112D' : fromColor === 0 ? 'var(--sd-colA,#14532d)' : fromColor === 1 ? 'var(--sd-colB,#0c4a6e)' : toColor === 0 ? 'var(--sd-colA,#14532d)' : toColor === 1 ? 'var(--sd-colB,#0c4a6e)' : '#A8A29E';
+              const ang = Math.atan2(y2 - y1, x2 - x1); const hl = 7; const hx1 = x2 - hl * Math.cos(ang - 0.45), hy1 = y2 - hl * Math.sin(ang - 0.45); const hx2 = x2 - hl * Math.cos(ang + 0.45), hy2 = y2 - hl * Math.sin(ang + 0.45); return <g key={idx}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={strokeColor} strokeWidth={arrowStyle === 'red' ? (lk.kind === 'strong' ? 3.5 : 2) : 2} strokeDasharray={lk.kind === 'weak' ? (arrowStyle === 'red' ? '2,4' : '4,2') : undefined} /><polygon points={`${x2},${y2} ${hx1},${hy1} ${hx2},${hy2}`} fill={strokeColor} /></g>;
             })}
           </svg>
           {[0,1,2,3,4,5,6,7,8].map(b => (
-          <div key={b} className="grid grid-cols-3 gap-[1px] bg-ink-5">
+          <div key={b} className="grid grid-cols-3 gap-[1px]" style={{ backgroundColor: 'var(--sd-grid,#332F2B)' }}>
             {Array.from({ length: 9 }).map((_, k) => {
               const r = Math.floor(b / 3) * 3 + Math.floor(k / 3);
               const c = (b % 3) * 3 + (k % 3);
@@ -228,7 +230,7 @@ export default function Sudoku() {
               return (
                 <button key={i} onClick={() => onCell(i)}
                   className={`sd-cell w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 relative flex items-center justify-center font-mono text-sm md:text-base lg:text-lg xl:text-xl font-bold ${flash.has(i) ? 'ring-2 ring-green-500 ring-inset' : sel === i ? 'ring-2 ring-copper ring-inset' : ''} transition`}
-                  style={{ backgroundColor: onOrange ? '#F7941D' : onRed ? '#E8112D' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? '#fff' : 'var(--sd-digit,#F5F1E8)' }}>
+                  style={{ backgroundColor: onOrange ? '#F7941D' : onRed ? 'var(--sd-focus,#E8112D)' : flash.has(i) ? 'var(--sd-flash,transparent)' : 'var(--sd-cell,#211F1D)', color: wrong.has(i) || conflictAt(i) ? 'var(--color-alert,#CC0000)' : onOrange || onRed ? '#fff' : puzzle[i] ? 'var(--sd-given,var(--sd-digit,#F5F1E8))' : 'var(--sd-entered,var(--sd-digit,#F5F1E8))' }}>
                   {v || ''}
                   {(wrong.has(i) || conflictAt(i)) && <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-alert"></span>}
                   {arrowMode && linkSource && linkSource.cell === i && <span className="absolute inset-0 ring-2 ring-cyan-400 ring-inset pointer-events-none"></span>}
@@ -258,7 +260,7 @@ export default function Sudoku() {
                   const g = Array.from(t).map(c => c === '.' || c === '0' ? 0 : parseInt(c));
                   const sol = solveFully(g);
                   if (!sol) { setMsg('Invalid puzzle: no solution'); setImportModal(false); return; }
-                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(0); setLinks([]); setLinkSource(null); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(1); setLinks([]); setLinkSource(null); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
                 } else if (t.length === 729) {
                   const g = new Array(81).fill(0);
                   const m: number[][] = [];
@@ -271,7 +273,7 @@ export default function Sudoku() {
                   }
                   const sol = solveFully(g);
                   if (!sol) { setMsg('Invalid pencil marks: no solution'); setImportModal(false); return; }
-                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(m); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(0); setLinks([]); setLinkSource(null); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
+                  setPuzzle(g); setSolution(sol); setGrade(null); setValues([...g]); setMarks(m); setStrikes(emptyStrikes()); setColors(emptyColors()); setNextColor(1); setLinks([]); setLinkSource(null); setSel(null); setFocus(null); setActiveDigit(null); setSecs(0); setRunning(true); setMsg(''); setWrong(new Set()); setImportModal(false);
                 } else { setMsg('Invalid length: need 81 or 729 chars'); }
               }} className="font-mono text-[10px] uppercase tracking-widest border border-copper text-copper px-4 py-2 hover:bg-copper hover:text-ink transition">Load</button>
               <button onClick={() => setImportModal(false)} className="font-mono text-[10px] uppercase tracking-widest border border-line text-gray-300 px-4 py-2 hover:border-copper hover:text-copper transition">Cancel</button>
