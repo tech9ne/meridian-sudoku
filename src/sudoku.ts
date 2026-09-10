@@ -222,7 +222,7 @@ function kiteStep(cand: number[][]): Hint | null {
   }
   return null;
 }
-function coloringStep(cand: number[][]): Hint | null {
+export function coloringStep(cand: number[][]): Hint | null {
   for (let d = 1; d <= 9; d++) {
     const color = new Map<number, 0 | 1>(); const adj = new Map<number, number[]>(); const comp = new Map<number, number>(); let cid = 0;
     for (const u of UNITS) { const cs = u.filter(i => cand[i].includes(d)); if (cs.length === 2) { adj.set(cs[0], [...(adj.get(cs[0]) || []), cs[1]]); adj.set(cs[1], [...(adj.get(cs[1]) || []), cs[0]]); } }
@@ -470,3 +470,20 @@ export function solveTrace(g: Grid): { tech: string; cells: number[]; digits: nu
 }
 
 function fishStep(cand: number[][]): Hint | null { return fishStepM(cand); }
+
+// Conjugate-chain painter for the UI: 2-color the connected component of the
+// strong-link graph for `digit` containing `cell`. Deliberately duplicates
+// coloringStep's adjacency rule instead of refactoring it: coloringStep is
+// gate-verified and stays untouched. conflict=true means an odd cycle
+// (component not 2-colorable => Rule-2 contradiction territory).
+export function colorChains(cand: number[][], cell: number, digit: number): { colorOf: number[]; conflict: boolean } | null {
+  const adj = new Map<number, number[]>();
+  for (const u of UNITS) { const cs = u.filter(i => cand[i].includes(digit)); if (cs.length === 2) { adj.set(cs[0], [...(adj.get(cs[0]) || []), cs[1]]); adj.set(cs[1], [...(adj.get(cs[1]) || []), cs[0]]); } }
+  if (!adj.has(cell)) return null;
+  const colorOf = new Array(81).fill(-1);
+  let conflict = false;
+  colorOf[cell] = 0;
+  const q = [cell];
+  while (q.length) { const cur = q.pop()!; for (const nb of adj.get(cur) || []) { const want = colorOf[cur] === 0 ? 1 : 0; if (colorOf[nb] === -1) { colorOf[nb] = want; q.push(nb); } else if (colorOf[nb] !== want) conflict = true; } }
+  return { colorOf, conflict };
+}
