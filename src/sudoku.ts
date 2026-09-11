@@ -1,5 +1,5 @@
 export type Grid = number[];
-import { hiddenStepM, fishStepM } from './spaces';
+import { hiddenStepM, fishStepM, findAll } from './spaces';
 export type Diff = 'easy' | 'medium' | 'hard' | 'diabolical';
 export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
 export interface Hint { chain?: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[];
@@ -306,17 +306,33 @@ export function xychainStep(cand: number[][]): Hint | null {
   return null;
 }
 function alsxzStep(cand: number[][]): Hint | null {
-  const als: { cells: number[]; cands: number[] }[] = [];
-  for (const u of UNITS) for (const k of [1, 2]) for (const cs of combosK(9, k)) { const cells = cs.map(o => u[o]).filter(i => cand[i].length > 0); if (cells.length !== k) continue; const cands = [...new Set(cells.flatMap(i => cand[i]))]; if (cands.length === k + 1) als.push({ cells, cands }); if (als.length > 150) break; }
-  for (let a = 0; a < als.length; a++) for (let b = a + 1; b < als.length; b++) { const A = als[a], B = als[b];
-    if (A.cells.some(i => B.cells.includes(i))) continue;
-    const common = A.cands.filter(d => B.cands.includes(d));
-    for (const X of common) for (const Z of common) { if (X === Z) continue;
-      const ax = A.cells.filter(i => cand[i].includes(X)); const bx = B.cells.filter(i => cand[i].includes(X));
-      if (!ax.length || !bx.length || !ax.every(i => bx.every(j => i === j || peersOf(i).includes(j)))) continue;
-      const az = A.cells.filter(i => cand[i].includes(Z)); const bz = B.cells.filter(i => cand[i].includes(Z));
-      const elim: number[] = []; for (let i = 0; i < 81; i++) { if (A.cells.includes(i) || B.cells.includes(i) || !cand[i].includes(Z)) continue; if (az.every(j => peersOf(i).includes(j)) && bz.every(j => peersOf(i).includes(j))) elim.push(i); }
-      if (elim.length) return { tech: 'als-xz', desc: `ALS-XZ removes ${Z}.`, elim: { cells: elim, digits: [Z] } }; } }
+  const table = findAll(cand, 1);
+  const alss = table.filter(e => e.kind === 'naked' && e.dof === 1);
+  for (let a = 0; a < alss.length; a++) {
+    const A = alss[a];
+    for (let b = a + 1; b < alss.length; b++) {
+      const B = alss[b];
+      if (A.cells.some(c => B.cells.includes(c))) continue;
+      const common = A.digits.filter(d => B.digits.includes(d));
+      for (const X of common) {
+        const ax = A.cells.filter(c => cand[c].includes(X));
+        const bx = B.cells.filter(c => cand[c].includes(X));
+        if (!ax.length || !bx.length) continue;
+        if (!ax.every(i => bx.every(j => i === j || peersOf(i).includes(j)))) continue;
+        for (const Z of common) {
+          if (X === Z) continue;
+          const az = A.cells.filter(c => cand[c].includes(Z));
+          const bz = B.cells.filter(c => cand[c].includes(Z));
+          const elim: number[] = [];
+          for (let i = 0; i < 81; i++) {
+            if (A.cells.includes(i) || B.cells.includes(i) || !cand[i].includes(Z)) continue;
+            if (az.every(j => peersOf(i).includes(j)) && bz.every(j => peersOf(i).includes(j))) elim.push(i);
+          }
+          if (elim.length) return { tech: 'als-xz', desc: `ALS-XZ removes ${Z}.`, elim: { cells: elim, digits: [Z] }, at: [...A.cells, ...B.cells] };
+        }
+      }
+    }
+  }
   return null;
 }
 function assume(cand: number[][], cell: number, digit: number): number[][] | null {
