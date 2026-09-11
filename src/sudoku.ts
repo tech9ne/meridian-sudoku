@@ -109,19 +109,19 @@ for (let bi = 0; bi < 9; bi++) {
   return null;
 }
 
-export function solveLogical(g: Grid): { solved: boolean; techs: Set<Tech>; cand: number[][] } {
+export function solveLogical(g: Grid): { solved: boolean; techs: Set<Tech>; cand: number[][]; values: number[] } {
   const values = [...g];
   const cand = allCandidates(values);
   const techs = new Set<Tech>();
   for (let iter = 0; iter < 200; iter++) {
-    if (values.every(v => v)) return { solved: true, techs, cand };
+    if (values.every(v => v)) return { solved: true, techs, cand, values };
     const step = logicalStep(cand);
-    if (!step) return { solved: values.every(v => v), techs, cand };
+    if (!step) return { solved: values.every(v => v), techs, cand, values };
     techs.add(step.tech);
     if (step.place) { const { cell, digit } = step.place; values[cell] = digit; cand[cell] = []; for (const p of PEERS[cell]) cand[p] = cand[p].filter(x => x !== digit); }
     else if (step.elim) { for (const c of step.elim.cells) cand[c] = cand[c].filter(x => !step.elim!.digits.includes(x)); }
   }
-  return { solved: values.every(v => v), techs, cand };
+  return { solved: values.every(v => v), techs, cand, values };
 }
 const TECH_PRICE: Record<string, { dof: number; cls: number; size: number }> = {
   'naked-single': { dof: 0, cls: 1, size: 1 }, 'hidden-single': { dof: 0, cls: 1, size: 1 },
@@ -155,12 +155,24 @@ export function solveProfile(g: Grid): { solved: boolean; techs: string[]; maxDo
   return { solved: values.every(v => v), techs, maxDof, maxCls, maxSize, steps: 300 };
 }
 export function gradeOf(puzzle: Grid): Diff {
-  const { solved, techs, cand } = solveLogical(puzzle);
+  const { solved, techs, cand, values } = solveLogical(puzzle);
   if (solved) {
-    const t1 = techs.has('pointing') || techs.has('boxline') || techs.has('naked-pair') || techs.has('hidden-pair');
-    return t1 ? 'medium' : 'easy';
+    let maxSize = 1;
+    for (const t of techs) { const sz = TECH_PRICE[t]?.size ?? 1; if (sz > maxSize) maxSize = sz; }
+    return maxSize >= 2 ? 'medium' : 'easy';
   }
-  if (tier2Probe(cand, true)) return 'hard';
+  if (!tier2Probe(cand, true)) return 'diabolical';
+  const vals = [...values];
+  const c2 = cand.map(r => [...r]);
+  for (let iter = 0; iter < 300; iter++) {
+    if (vals.every(v => v)) return 'hard';
+    const h = anyStep(c2, true);
+    if (!h) return 'diabolical';
+    const pr = TECH_PRICE[h.tech] ?? { dof: 0, cls: 1, size: 1 };
+    if (pr.cls >= 3) return 'diabolical';
+    if (h.place) { const { cell, digit } = h.place; vals[cell] = digit; c2[cell] = []; for (const q of peersOf(cell)) if (c2[q].length) c2[q] = c2[q].filter(x => x !== digit); }
+    else if (h.elim) { for (const c of h.elim.cells) c2[c] = c2[c].filter(x => !h.elim!.digits.includes(x)); }
+  }
   return 'diabolical';
 }
 export const GIVENS: Record<Diff, [number, number]> = { easy: [40, 45], medium: [33, 39], hard: [28, 32], diabolical: [24, 28] };
