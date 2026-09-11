@@ -47,6 +47,8 @@ export default function Sudoku() {
   const [arrowStyle, setArrowStyle] = useState<'colored' | 'red'>('colored');
   const [autoLinks, setAutoLinks] = useState<{ from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[]>([]);
   const skipClear = useRef(false);
+  const skipPrune = useRef(false);
+  useEffect(() => { if (skipPrune.current) { skipPrune.current = false; return; } setStrikes(st => st.map((c, i) => c.filter(d => !marks[i].length || marks[i].includes(d)))); }, [marks, values]);
   useEffect(() => { if (skipClear.current) { skipClear.current = false; return; } setFlash(new Set()); }, [values, marks]);
   const [highlightColor, setHighlightColor] = useState<'green' | 'red'>('green');
   const boardRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,7 @@ export default function Sudoku() {
     if (h.elim) setStrikes(st => st.map((c, i) => (h.elim!.cells.includes(i) ? [...new Set([...c, ...h.elim!.digits])] : c)));
     else if (h.place && autoApply) { const pc = h.place.cell, pd = h.place.digit; const ps2 = new Set(peersOf(pc)); setStrikes(st => st.map((c, i) => (i !== pc && ps2.has(i) && marks[i].includes(pd) ? [...new Set([...c, pd])] : c))); }
     skipClear.current = true;
+    if (autoApply) skipPrune.current = true;
     setFlash(new Set(subj));
     setMsg(`${autoApply ? 'Applied — ' : ''}${h.tech}: ${h.desc}${loc ? ' → ' + loc : ''}`);
   };

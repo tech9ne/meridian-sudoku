@@ -179,14 +179,15 @@ export const GIVENS: Record<Diff, [number, number]> = { easy: [40, 45], medium: 
 const TIER: Record<Diff, number> = { easy: 0, medium: 1, hard: 2, diabolical: 3 };
 export function generateGraded(target: Diff): { puzzle: Grid; solution: Grid; grade: Diff } {
   let best: { puzzle: Grid; solution: Grid; grade: Diff } | null = null;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  const ATTEMPTS = TIER[target] >= 2 ? 12 : 6;
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const g = new Array(81).fill(0);
     const fill = (i: number): boolean => { if (i === 81) return true; for (const d of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])) if (valid(g, i, d)) { g[i] = d; if (fill(i + 1)) return true; g[i] = 0; } return false; };
     fill(0);
     const solution = [...g];
     const p = [...g];
     let grade = gradeOf(p);
-    for (let pass = 0; pass < 3; pass++) {
+    for (let pass = 0; pass < (TIER[target] >= 2 ? 4 : 3); pass++) {
       let accepted = 0;
       for (const i of shuffle(Array.from({ length: 81 }, (_, k) => k))) {
         if (target !== 'easy' && grade === target) break;
@@ -344,11 +345,12 @@ export function xychainStep(cand: number[][]): Hint | null {
         const np = [...path, nx], nl = [...links, L];
         if (np.length >= 2) { const E1 = cand[start].find(d => d !== nl[0]); const E2 = cand[nx].find(d => d !== nl[nl.length - 1]);
           if (E1 && E1 === E2) { const elim: number[] = []; for (let i = 0; i < 81; i++) if (!np.includes(i) && cand[i].includes(E1) && peersOf(i).includes(start) && peersOf(i).includes(nx)) elim.push(i);
-            if (elim.length) { const chain: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[] = [{ from: [start, E1], to: [start, nl[0]], kind: 'strong' }]; for (let j = 0; j < nl.length; j++) { chain.push({ from: [np[j], nl[j]], to: [np[j + 1], nl[j]], kind: 'weak' }); if (j + 1 < nl.length) chain.push({ from: [np[j + 1], nl[j]], to: [np[j + 1], nl[j + 1]], kind: 'strong' }); } chain.push({ from: [nx, nl[nl.length - 1]], to: [nx, E1], kind: 'strong' }); return { tech: 'xy-chain', desc: `XY-chain removes ${E1}.`, elim: { cells: elim, digits: [E1] }, chain }; } } }
+            if (elim.length) { const chain: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[] = [{ from: [start, E1], to: [start, nl[0]], kind: 'strong' }]; for (let j = 0; j < nl.length; j++) { chain.push({ from: [np[j], nl[j]], to: [np[j + 1], nl[j]], kind: 'weak' }); if (j + 1 < nl.length) chain.push({ from: [np[j + 1], nl[j]], to: [np[j + 1], nl[j + 1]], kind: 'strong' }); } chain.push({ from: [nx, nl[nl.length - 1]], to: [nx, E1], kind: 'strong' }); return { tech: 'xy-chain', desc: `XY-chain ${np.map(c => rcOf(c) + '(' + cand[c].join('/') + ')').join(' → ')} removes ${E1}.`, elim: { cells: elim, digits: [E1] }, chain }; } } }
         if (np.length < 8) stack.push({ node: nx, path: np, links: nl }); } }
   }
   return null;
 }
+const rcOf = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
 function alsxzStep(cand: number[][]): Hint | null {
   const table = findAll(cand, 1);
   const alss = table.filter(e => e.kind === 'naked' && e.dof === 1);
@@ -372,7 +374,7 @@ function alsxzStep(cand: number[][]): Hint | null {
             if (A.cells.includes(i) || B.cells.includes(i) || !cand[i].includes(Z)) continue;
             if (az.every(j => peersOf(i).includes(j)) && bz.every(j => peersOf(i).includes(j))) elim.push(i);
           }
-          if (elim.length) return { tech: 'als-xz', desc: `ALS-XZ removes ${Z}.`, elim: { cells: elim, digits: [Z] }, at: [...A.cells, ...B.cells] };
+          if (elim.length) return { tech: 'als-xz', desc: `ALS-XZ: ALS ${A.cells.map(rcOf).join(',')} + ${B.cells.map(rcOf).join(',')} share restricted common ${X}; removes ${Z} from every cell seeing all ${Z}s in both.`, elim: { cells: elim, digits: [Z] }, at: [...A.cells, ...B.cells] };
         }
       }
     }
