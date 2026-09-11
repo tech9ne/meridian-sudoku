@@ -2,7 +2,7 @@ export type Grid = number[];
 import { hiddenStepM, fishStepM } from './spaces';
 export type Diff = 'easy' | 'medium' | 'hard' | 'diabolical';
 export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
-export interface Hint {
+export interface Hint { chain?: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[];
   tech: Tech;
   desc: string;
   place?: { cell: number; digit: number };
@@ -289,7 +289,7 @@ function bugStep(cand: number[][]): Hint | null {
   for (const u of unitsOfI(t)) for (const d of cand[t]) if (u.filter(i => cand[i].includes(d)).length === 3) return { tech: 'bug+1', desc: `BUG+1: place ${d}.`, place: { cell: t, digit: d } };
   return null;
 }
-function xychainStep(cand: number[][]): Hint | null {
+export function xychainStep(cand: number[][]): Hint | null {
   const bi = [...Array(81).keys()].filter(i => cand[i].length === 2);
   const nbr = (i: number) => bi.filter(j => j !== i && peersOf(i).includes(j) && cand[i].some(d => cand[j].includes(d)));
   for (const start of bi) {
@@ -300,7 +300,7 @@ function xychainStep(cand: number[][]): Hint | null {
         const np = [...path, nx], nl = [...links, L];
         if (np.length >= 2) { const E1 = cand[start].find(d => d !== nl[0]); const E2 = cand[nx].find(d => d !== nl[nl.length - 1]);
           if (E1 && E1 === E2) { const elim: number[] = []; for (let i = 0; i < 81; i++) if (!np.includes(i) && cand[i].includes(E1) && peersOf(i).includes(start) && peersOf(i).includes(nx)) elim.push(i);
-            if (elim.length) return { tech: 'xy-chain', desc: `XY-chain removes ${E1}.`, elim: { cells: elim, digits: [E1] } }; } }
+            if (elim.length) { const chain: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[] = [{ from: [start, E1], to: [start, nl[0]], kind: 'strong' }]; for (let j = 0; j < nl.length; j++) { chain.push({ from: [np[j], nl[j]], to: [np[j + 1], nl[j]], kind: 'weak' }); if (j + 1 < nl.length) chain.push({ from: [np[j + 1], nl[j]], to: [np[j + 1], nl[j + 1]], kind: 'strong' }); } chain.push({ from: [nx, nl[nl.length - 1]], to: [nx, E1], kind: 'strong' }); return { tech: 'xy-chain', desc: `XY-chain removes ${E1}.`, elim: { cells: elim, digits: [E1] }, chain }; } } }
         if (np.length < 8) stack.push({ node: nx, path: np, links: nl }); } }
   }
   return null;
