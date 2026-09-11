@@ -123,6 +123,37 @@ export function solveLogical(g: Grid): { solved: boolean; techs: Set<Tech>; cand
   }
   return { solved: values.every(v => v), techs, cand };
 }
+const TECH_PRICE: Record<string, { dof: number; cls: number; size: number }> = {
+  'naked-single': { dof: 0, cls: 1, size: 1 }, 'hidden-single': { dof: 0, cls: 1, size: 1 },
+  'naked-pair': { dof: 0, cls: 1, size: 2 }, 'hidden-pair': { dof: 0, cls: 1, size: 2 },
+  'naked-triple': { dof: 0, cls: 1, size: 3 }, 'hidden-triple': { dof: 0, cls: 1, size: 3 },
+  'naked-quad': { dof: 0, cls: 1, size: 4 }, 'hidden-quad': { dof: 0, cls: 1, size: 4 },
+  'pointing': { dof: 0, cls: 1, size: 2 }, 'boxline': { dof: 0, cls: 1, size: 2 },
+  'fish': { dof: 0, cls: 2, size: 4 }, 'skyscraper': { dof: 0, cls: 2, size: 2 }, 'kite': { dof: 0, cls: 2, size: 2 },
+  'xy-wing': { dof: 0, cls: 2, size: 3 }, 'w-wing': { dof: 0, cls: 2, size: 2 }, 'xyz-wing': { dof: 0, cls: 2, size: 3 },
+  'coloring': { dof: 1, cls: 2, size: 0 }, 'ur': { dof: 1, cls: 2, size: 0 }, 'bug+1': { dof: 1, cls: 2, size: 0 },
+  'xy-chain': { dof: 0, cls: 3, size: 0 }, 'als-xz': { dof: 1, cls: 3, size: 0 },
+  'forcing': { dof: 1, cls: 4, size: 0 }, 'nishio': { dof: 2, cls: 4, size: 0 },
+};
+export function solveProfile(g: Grid): { solved: boolean; techs: string[]; maxDof: number; maxCls: number; maxSize: number; steps: number } {
+  const values = [...g];
+  const cand = allCandidates(values);
+  const techs: string[] = [];
+  let maxDof = 0, maxCls = 0, maxSize = 0;
+  for (let iter = 0; iter < 300; iter++) {
+    if (values.every(v => v)) return { solved: true, techs, maxDof, maxCls, maxSize, steps: iter };
+    const h = anyStep(cand, true);
+    if (!h) return { solved: values.every(v => v), techs, maxDof, maxCls, maxSize, steps: iter };
+    techs.push(h.tech);
+    const pr = TECH_PRICE[h.tech] ?? { dof: 0, cls: 1, size: 0 };
+    if (pr.dof > maxDof) maxDof = pr.dof;
+    if (pr.cls > maxCls) maxCls = pr.cls;
+    if (pr.size > maxSize) maxSize = pr.size;
+    if (h.place) { const { cell, digit } = h.place; values[cell] = digit; cand[cell] = []; for (const q of peersOf(cell)) if (cand[q].length) cand[q] = cand[q].filter(x => x !== digit); }
+    else if (h.elim) { for (const c of h.elim.cells) cand[c] = cand[c].filter(x => !h.elim!.digits.includes(x)); }
+  }
+  return { solved: values.every(v => v), techs, maxDof, maxCls, maxSize, steps: 300 };
+}
 export function gradeOf(puzzle: Grid): Diff {
   const { solved, techs, cand } = solveLogical(puzzle);
   if (solved) {
@@ -167,6 +198,7 @@ export function generateGraded(target: Diff): { puzzle: Grid; solution: Grid; gr
   return best!;
 }
 export function hintFor(g: Grid): Hint | null { return anyStep(allCandidates(g), countSolutions([...g]) === 1); }
+export function hintForCand(cand: number[][], g: Grid): Hint | null { return anyStep(cand, countSolutions([...g]) === 1); }
 export function encode(g: Grid): string { return g.map(v => (v ? String(v) : '.')).join(''); }
 export function decode(s: string): Grid | null { if (s.length !== 81) return null; const g = s.split('').map(ch => (ch >= '1' && ch <= '9' ? Number(ch) : 0)); return g.some(v => v) ? g : null; }
 

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Diff, Grid, generateGraded, decode, solveFully, hintFor, peersOf, allCandidates, candidatesFor, encode, findContradiction, colorChains } from '@/lib/sudoku';
+import { Diff, Grid, generateGraded, decode, solveFully, hintForCand, peersOf, allCandidates, candidatesFor, encode, findContradiction, colorChains } from '@/lib/sudoku';
 
 const DIFFS: Diff[] = ['easy', 'medium', 'hard', 'diabolical'];
 type Marks = number[][];
@@ -124,7 +124,8 @@ export default function Sudoku() {
     if (hasConflict()) { setMsg('Invalid position: duplicate digit in a house — fix the red cells first.'); return; }
     const contra = findContradiction(values);
     if (contra) { setMsg(`No solution from here: ${contra}`); return; }
-    const h = hintFor(values);
+    const view = values.map((v, i) => (v ? [v] : marks[i].length ? marks[i] : candidatesFor(values, i)));
+    const h = hintForCand(view, values);
     if (!h) { setMsg('No technique in the implemented ladder applies here; a longer chain or a guess may be needed.'); return; }
     setAutoLinks(h.chain ?? []);
     snapshot();
