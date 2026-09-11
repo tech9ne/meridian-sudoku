@@ -46,6 +46,8 @@ export default function Sudoku() {
   const [linkKind, setLinkKind] = useState<'strong' | 'weak'>('strong');
   const [arrowStyle, setArrowStyle] = useState<'colored' | 'red'>('colored');
   const [autoLinks, setAutoLinks] = useState<{ from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[]>([]);
+  const skipClear = useRef(false);
+  useEffect(() => { if (skipClear.current) { skipClear.current = false; return; } setFlash(new Set()); }, [values, marks]);
   const [highlightColor, setHighlightColor] = useState<'green' | 'red'>('green');
   const boardRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(36);
@@ -139,8 +141,8 @@ export default function Sudoku() {
     const loc = locSubj.slice(0, 6).map(coord).join(' ') + (locSubj.length > 6 ? ` +${locSubj.length - 6}` : '');
     if (h.elim) setStrikes(st => st.map((c, i) => (h.elim!.cells.includes(i) ? [...new Set([...c, ...h.elim!.digits])] : c)));
     else if (h.place && autoApply) { const pc = h.place.cell, pd = h.place.digit; const ps2 = new Set(peersOf(pc)); setStrikes(st => st.map((c, i) => (i !== pc && ps2.has(i) && marks[i].includes(pd) ? [...new Set([...c, pd])] : c))); }
+    skipClear.current = true;
     setFlash(new Set(subj));
-    setTimeout(() => setFlash(new Set()), 2600);
     setMsg(`${autoApply ? 'Applied — ' : ''}${h.tech}: ${h.desc}${loc ? ' → ' + loc : ''}`);
   };
   const share = async () => { setMenu(false); const url = `${location.origin}/games/sudoku?p=${encode(puzzle)}`; try { await navigator.clipboard.writeText(url); setMsg('Puzzle link copied.'); } catch { setMsg(url); } };
