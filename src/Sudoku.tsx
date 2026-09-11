@@ -21,7 +21,17 @@ const IC = {
 
 export default function Sudoku() {
   const [diff, setDiff] = useState<Diff>('medium');
-  const [gen, setGen] = useState(() => generateGraded('medium'));
+  const initialShared = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('p') : null;
+  const [gen, setGen] = useState(() => {
+    if (initialShared) {
+      const decoded = decode(initialShared);
+      if (!decoded) return generateGraded('medium');
+      const solvedGrid = solveFully(decoded);
+      return solvedGrid ? { puzzle: decoded, solution: solvedGrid, grade: 'medium' as Diff } : generateGraded('medium');
+    }
+    return generateGraded('medium');
+  });
+  const [phase, setPhase] = useState<'welcome' | 'play'>(initialShared ? 'play' : 'welcome');
   const [shared] = useState(() => {
     if (typeof window === 'undefined') return null;
     const p = new URLSearchParams(window.location.search).get('p');
@@ -61,7 +71,7 @@ export default function Sudoku() {
   const [notes, setNotes] = useState(false);
   const [showMarks, setShowMarks] = useState(true);
   const [secs, setSecs] = useState(0);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(initialShared ? true : false);
   const [msg, setMsg] = useState('');
   const [menu, setMenu] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -94,6 +104,7 @@ export default function Sudoku() {
     setBusy(true); setDiff(d); setMenu(false);
     setTimeout(() => {
       const g = generateGraded(d);
+      setPhase('play'); setRunning(true); setSecs(0);
       setGen(g); setPuzzle(g.puzzle); setSolution(g.solution); setGrade(g.grade);
       setDiff(g.grade);
       setValues([...g.puzzle]); setMarks(emptyMarks()); setStrikes(emptyStrikes()); setColors(emptyColors()); setLinks([]); setLinkSource(null); setAutoLinks([]); setNextColor(1);
@@ -159,6 +170,29 @@ export default function Sudoku() {
   const mm = String(Math.floor(secs / 60)).padStart(2, '0'); const ss = String(secs % 60).padStart(2, '0');
   const iconBtn = (active = false) => `w-10 h-10 flex items-center justify-center border transition ${active ? 'text-copper border-copper/50 bg-copper/10' : 'border-line text-gray-300 hover:text-copper hover:border-copper'}`;
   const menuItem = 'w-full text-left px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-gray-300 hover:bg-ink-3 hover:text-copper transition';
+
+  if (phase === 'welcome') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 px-4">
+        <div className="flex flex-col items-center gap-4">
+          <svg viewBox="0 0 100 100" className="w-24 h-24" role="img" aria-label="Meridian logo">
+            <rect x="0" y="0" width="87" height="87" fill="#C00000" />
+            <rect x="30" y="30" width="27" height="27" fill="#F7FAFC" />
+            <rect x="74" y="74" width="26" height="26" fill="#D27A00" />
+          </svg>
+          <h1 className="text-4xl font-light tracking-[0.3em]" style={{ color: 'var(--accent)' }}>MERIDIAN</h1>
+        </div>
+        <p className="text-lg opacity-70">Sudoku with teaching hints and honest grading.</p>
+        <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+          {(['easy', 'medium', 'hard', 'diabolical'] as Diff[]).map(d => (
+            <button key={d} onClick={() => newPuzzle(d)} className="px-6 py-4 rounded-lg font-medium capitalize transition-colors" style={{ backgroundColor: 'var(--accent)', color: 'var(--bg)', opacity: 0.9 }}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-4">
