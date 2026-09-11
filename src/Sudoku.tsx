@@ -180,12 +180,12 @@ export default function Sudoku() {
             <rect x="30" y="30" width="27" height="27" fill="#F7FAFC" />
             <rect x="74" y="74" width="26" height="26" fill="#D27A00" />
           </svg>
-          <h1 className="text-4xl font-light tracking-[0.3em]" style={{ color: 'var(--accent)' }}>MERIDIAN</h1>
+          <h1 className="text-4xl font-light tracking-[0.3em]" style={{ color: 'var(--sd-digit,#111827)' }}>MERIDIAN</h1>
         </div>
         <p className="text-lg opacity-70">Sudoku with teaching hints and honest grading.</p>
         <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
           {(['easy', 'medium', 'hard', 'diabolical'] as Diff[]).map(d => (
-            <button key={d} onClick={() => newPuzzle(d)} className="px-6 py-4 rounded-lg font-medium capitalize transition-colors" style={{ backgroundColor: 'var(--accent)', color: 'var(--bg)', opacity: 0.9 }}>
+            <button key={d} onClick={() => newPuzzle(d)} className="px-6 py-4 rounded-lg font-medium capitalize transition-colors hover:opacity-80" style={{ backgroundColor: 'var(--sd-active,#F7941D)', color: '#fff' }}>
               {d}
             </button>
           ))}
