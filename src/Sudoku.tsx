@@ -134,8 +134,9 @@ export default function Sudoku() {
       else if (h.elim) { setMarks(m => m.map((c, i) => (h.elim!.cells.includes(i) ? c.filter(x => !h.elim!.digits.includes(x)) : c))); }
     }
     const subj = h.at && h.at.length ? h.at : h.place ? [h.place.cell] : h.elim ? h.elim.cells : [];
+    const locSubj = h.place ? [h.place.cell] : h.elim ? h.elim.cells : [];
     const coord = (i: number) => `r${Math.floor(i / 9) + 1}c${i % 9 + 1}`;
-    const loc = subj.slice(0, 6).map(coord).join(' ') + (subj.length > 6 ? ` +${subj.length - 6}` : '');
+    const loc = locSubj.slice(0, 6).map(coord).join(' ') + (locSubj.length > 6 ? ` +${locSubj.length - 6}` : '');
     if (h.elim) setStrikes(st => st.map((c, i) => (h.elim!.cells.includes(i) ? [...new Set([...c, ...h.elim!.digits])] : c)));
     else if (h.place && autoApply) { const pc = h.place.cell, pd = h.place.digit; const ps2 = new Set(peersOf(pc)); setStrikes(st => st.map((c, i) => (i !== pc && ps2.has(i) && marks[i].includes(pd) ? [...new Set([...c, pd])] : c))); }
     setFlash(new Set(subj));
