@@ -124,7 +124,7 @@ export default function Sudoku() {
     if (hasConflict()) { setMsg('Invalid position: duplicate digit in a house — fix the red cells first.'); return; }
     const contra = findContradiction(values);
     if (contra) { setMsg(`No solution from here: ${contra}`); return; }
-    const view = values.map((v, i) => (v ? [v] : marks[i].length ? marks[i] : candidatesFor(values, i)));
+    const view = values.map((v, i) => (v ? [] : marks[i].length ? marks[i] : candidatesFor(values, i)));
     const h = hintForCand(view, values);
     if (!h) { setMsg('No technique in the implemented ladder applies here; a longer chain or a guess may be needed.'); return; }
     setAutoLinks(h.chain ?? []);
