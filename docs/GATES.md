@@ -49,3 +49,9 @@ D11 Baseline re-record: live-cell/live-digit mask guards in findAll removed
    28 poisoned traces purged; grade distribution unchanged.
 D12 Cross-engine scripts excluded from project tsconfig (external tree is not
    strict-clean); they are validated at runtime by gate 9, not by tsc.
+D13 Gate 9 reference implementation = TS port (src/als.ts, src/chain.ts) at
+delivery commit. Bundle (-core.js) rejected as reference: snapshot's
+mini-sectors-core.js lacks buildMiniSectors (strong-link guard unsatisfiable),
+load-order guards and namespace resolution depend on browser single-global,
+and the snapshot trails his live tree (cache-busted chain-core). Re-pin after
+his rebuild stabilizes, on his say-so.
