@@ -71,3 +71,7 @@ D14 Elimination validation is soundness-based, not channel-based. His type1/type
 taxonomy is his implementation; our referee checks that forcing the eliminated
 candidate true destroys the puzzle. Sub-chain harvesting (every contiguous
 non-connected edge pair yields its own OR) is documented, not re-derived.
+D15 elim.cells per-digit multiplicity is load-bearing for an unidentified
+consumer (parity went red on a source dedup that the cross-product apply makes
+board-inert). Mechanism open. Dedup lives at the render join only; never dedup
+elim.cells at source. ea880986 shipped parity-red; fixed forward, not rewritten.

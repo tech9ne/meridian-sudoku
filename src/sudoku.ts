@@ -454,7 +454,7 @@ function nakedTripleStep(cand: number[][]): Hint | null {
       const uni = new Set(cells.flatMap(i => cand[i]));
       if (uni.size === 3) {
         const elim: number[] = [];
-        for (const i of u) if (!cells.includes(i) && cand[i].some(d => uni.has(d))) elim.push(i);
+        for (const i of u) if (!cells.includes(i)) for (const d of uni) if (cand[i].includes(d)) elim.push(i);
         if (elim.length) return { tech: 'naked-triple', desc: `Naked triple ${[...uni].sort().join('/')} locks those digits out of the unit.`, elim: { cells: elim, digits: [...uni] }, at: cells };
       }
     }
@@ -485,7 +485,7 @@ function nakedQuadStep(cand: number[][]): Hint | null {
       const uni = new Set(cells.flatMap(i => cand[i]));
       if (uni.size === 4) {
         const elim: number[] = [];
-        for (const i of u) if (!cells.includes(i) && cand[i].some(d => uni.has(d))) elim.push(i);
+        for (const i of u) if (!cells.includes(i)) for (const d of uni) if (cand[i].includes(d)) elim.push(i);
         if (elim.length) return { tech: 'naked-quad', desc: `Naked quad ${[...uni].sort().join('/')} locks those digits out of the unit.`, elim: { cells: elim, digits: [...uni] }, at: cells };
       }
     }
