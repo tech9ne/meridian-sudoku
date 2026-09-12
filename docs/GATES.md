@@ -75,3 +75,9 @@ D15 elim.cells per-digit multiplicity is load-bearing for an unidentified
 consumer (parity went red on a source dedup that the cross-product apply makes
 board-inert). Mechanism open. Dedup lives at the render join only; never dedup
 elim.cells at source. ea880986 shipped parity-red; fixed forward, not rewritten.
+D15 elim.cells per-digit multiplicity is load-bearing for an unidentified
+consumer (parity went red on a source dedup that the cross-product apply makes
+board-inert). Mechanism open. Dedup lives at the render join only; never dedup
+elim.cells at source. ea880986 shipped parity-red; fixed forward, not rewritten.
+Harness scripts are excluded from tsc wholesale (scripts/**); they are validated
+by execution and by gates 1-9, not by the project typecheck.
