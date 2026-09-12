@@ -28,3 +28,24 @@ D4 Marks-aware hint contract: engine candidate view = placed cells -> [], else p
 D5 Strikes contract: a strike is a pending elimination — line-through while the candidate is still penciled; ghost after apply; pruned when marks exclude the digit; auto-apply commits skipped once via skipPrune.
 D6 Highlight contract: flash persists until the next board mutation; skipClear consumes the hint's own auto-apply commit.
 D7 Welcome contract: cold start shows mark + difficulty choice, timer frozen; ?p= share links bypass welcome; timer gated on running.
+
+## Gate 9 (local, cross-engine)
+scripts/als-crosscheck.ts: our findAll naked dof=1 (indecomposable, size>=2) vs
+StrmCkr alsConstructor over the corpus. Requires ~/stormdoku/stormdoku present
+(external reference implementation, not vendored). NOTE: his maxSizeDOF option
+caps ALS SIZE in cells, not degrees of freedom; pass 8.
+Baseline @ D11: ours=45418 theirs=41523 mismatches=3895, theirs subset of ours,
+ours-only bs-class = 0. Residual = his enumeration pruning (minimality/caps),
+open collaborator question, not a defect claim.
+Pass criterion: theirs subset of ours AND bs=0 AND mismatches within 5% of baseline.
+
+## Decisions (continued)
+D9 AHS excluded from validation and ingestion: AHS_RCC upstream-known-broken;
+   his production runs report ahsLinks 0 (includeAhs off). Revisit on his fix.
+D10 Gate output is read to its last line. Any UNSOUND/MISS/FAIL line is a stop
+   condition before any ship chain. Origin: 12 unsound steps hidden by tail habit.
+D11 Baseline re-record: live-cell/live-digit mask guards in findAll removed
+   placed-cell pollution from the census. OLD_UNSOUND 12 -> NEW_UNSOUND 0;
+   28 poisoned traces purged; grade distribution unchanged.
+D12 Cross-engine scripts excluded from project tsconfig (external tree is not
+   strict-clean); they are validated at runtime by gate 9, not by tsc.

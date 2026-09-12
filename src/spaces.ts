@@ -124,7 +124,9 @@ export function findAll(cand: number[][], maxDof = 3): FindEntry[] {
     const cellsOf = cellsOfH(h);
     const union = new Int16Array(512);
     for (let m = 1; m < 512; m++) union[m] = union[m & (m - 1)] | Cm[cellsOf[IDX[m & -m]]];
+    let liveCells = 0; for (let k = 0; k < 9; k++) if (Cm[cellsOf[k]]) liveCells |= 1 << k;
     for (let m = 3; m < 512; m++) {
+      if ((m & ~liveCells) !== 0) continue;
       const n = POPC[m];
       const u = union[m];
       const dof = POPC[u] - n;
@@ -148,7 +150,9 @@ export function findAll(cand: number[][], maxDof = 3): FindEntry[] {
     const cellsOf = cellsOfH(h);
     const pun = new Int16Array(512);
     for (let m = 1; m < 512; m++) pun[m] = pun[m & (m - 1)] | M[h][IDX[m & -m]];
+    let liveDigits = 0; for (let d = 0; d < 9; d++) if (M[h][d]) liveDigits |= 1 << d;
     for (let m = 3; m < 512; m++) {
+      if ((m & ~liveDigits) !== 0) continue;
       const k = POPC[m];
       const pos = pun[m];
       if (!pos) continue;
