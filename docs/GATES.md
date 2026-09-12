@@ -55,3 +55,19 @@ mini-sectors-core.js lacks buildMiniSectors (strong-link guard unsatisfiable),
 load-order guards and namespace resolution depend on browser single-global,
 and the snapshot trails his live tree (cache-busted chain-core). Re-pin after
 his rebuild stabilizes, on his say-so.
+
+## Gate 8 (chain-validate extension)
+scripts/chain-rules.ts: validates StrmCkr ChainReport from ported chain.ts via
+tsx. Link validity: LOCAL (same cell, disjoint digits), SECTOR (all weak-digit
+candidates of both edges in one house, no overlap cell carries weak digit).
+Elimination soundness: solution-referee check (technique-agnostic), NOT his
+type1/type2 channels — those are his implementation detail, sub-chain harvesting
+documented in chain.ts:995-1030.
+Baseline @ fixture zero (his aic_101 practice grid): link_fail=0 elim_unsound=0
+chains=50 elims_checked=98.
+
+## Decisions (continued)
+D14 Elimination validation is soundness-based, not channel-based. His type1/type2
+taxonomy is his implementation; our referee checks that forcing the eliminated
+candidate true destroys the puzzle. Sub-chain harvesting (every contiguous
+non-connected edge pair yields its own OR) is documented, not re-derived.
