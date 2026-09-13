@@ -1,7 +1,7 @@
 export type Grid = number[];
 import { hiddenStepM, fishStepM, findAll } from './spaces';
 export type Diff = 'easy' | 'medium' | 'hard' | 'diabolical';
-export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'als-xz' | 'forcing' | 'nishio';
+export type Tech = 'naked-single' | 'hidden-single' | 'naked-pair' | 'hidden-pair' | 'naked-triple' | 'hidden-triple' | 'naked-quad' | 'hidden-quad' | 'pointing' | 'boxline' | 'fish' | 'skyscraper' | 'kite' | 'coloring' | 'xy-wing' | 'w-wing' | 'xyz-wing' | 'ur' | 'bug+1' | 'xy-chain' | 'grouped-x-chain' | 'als-xz' | 'forcing' | 'nishio';
 export interface Hint { chain?: { from: [number, number]; to: [number, number]; kind: 'strong' | 'weak' }[];
   tech: Tech;
   desc: string;
@@ -132,7 +132,7 @@ const TECH_PRICE: Record<string, { dof: number; cls: number; size: number }> = {
   'fish': { dof: 0, cls: 2, size: 4 }, 'skyscraper': { dof: 0, cls: 2, size: 2 }, 'kite': { dof: 0, cls: 2, size: 2 },
   'xy-wing': { dof: 0, cls: 2, size: 3 }, 'w-wing': { dof: 0, cls: 2, size: 2 }, 'xyz-wing': { dof: 0, cls: 2, size: 3 },
   'coloring': { dof: 1, cls: 2, size: 0 }, 'ur': { dof: 1, cls: 2, size: 0 }, 'bug+1': { dof: 1, cls: 2, size: 0 },
-  'xy-chain': { dof: 0, cls: 3, size: 0 }, 'als-xz': { dof: 1, cls: 3, size: 0 },
+  'xy-chain': { dof: 0, cls: 3, size: 0 }, 'grouped-x-chain': { dof: 0, cls: 3, size: 0 }, 'als-xz': { dof: 1, cls: 3, size: 0 },
   'forcing': { dof: 1, cls: 4, size: 0 }, 'nishio': { dof: 2, cls: 4, size: 0 },
 };
 export function solveProfile(g: Grid): { solved: boolean; techs: string[]; maxDof: number; maxCls: number; maxSize: number; steps: number } {
@@ -334,6 +334,92 @@ function bugStep(cand: number[][]): Hint | null {
   for (const u of unitsOfI(t)) for (const d of cand[t]) if (u.filter(i => cand[i].includes(d)).length === 3) return { tech: 'bug+1', desc: `BUG+1: place ${d}.`, place: { cell: t, digit: d } };
   return null;
 }
+function groupedxchainStep(cand: number[][]): Hint | null {
+  type Nd = { cells: number[]; d: number };
+  const nodes: Nd[] = [];
+  const seen = new Set<string>();
+  const add = (cells: number[], d: number) => {
+    const k = d + ':' + cells.slice().sort((a, b) => a - b).join(',');
+    if (seen.has(k)) return;
+    seen.add(k); nodes.push({ cells, d });
+  };
+  for (let h = 0; h < 27; h++) {
+    const U = UNITS[h];
+    for (let d = 1; d <= 9; d++) {
+      const inH: number[] = [];
+      for (const c of U) if (cand[c].includes(d)) inH.push(c);
+      if (inH.length === 0) continue;
+      for (const c of inH) add([c], d);
+      if (inH.length >= 2) {
+        const parts = new Map<string, number[]>();
+        for (const c of inH) {
+          const r = Math.floor(c / 9), col = c % 9;
+          const b = Math.floor(r / 3) * 3 + Math.floor(col / 3);
+          const key = h < 9 ? 'r' + r + 'b' + b : h < 18 ? 'c' + col + 'b' + b : 'r' + Math.floor(r / 3) + 'c' + Math.floor(col / 3);
+          if (!parts.has(key)) parts.set(key, []);
+          parts.get(key)!.push(c);
+        }
+        if (parts.size === 2) { const q = [...parts.values()]; add(q[0], d); add(q[1], d); }
+      }
+    }
+  }
+  const weak = (A: Nd, B: Nd) => {
+    if (A.d !== B.d) return false;
+    for (const a of A.cells) for (const b of B.cells) if (a === b || !peersOf(a).includes(b)) return false;
+    return true;
+  };
+  const strong = (A: Nd, B: Nd) => {
+    if (A.d !== B.d) return false;
+    for (const a of A.cells) for (const b of B.cells) if (a === b) return false;
+    for (let h = 0; h < 27; h++) {
+      const U = UNITS[h];
+      let covers = true, total = 0;
+      for (const c of U) if (cand[c].includes(A.d)) { total++; if (!A.cells.includes(c) && !B.cells.includes(c)) { covers = false; break; } }
+      if (covers && total > 0) return true;
+    }
+    return false;
+  };
+  const results: { A: Nd; B: Nd; elims: number[]; len: number }[] = [];
+  let budget = 200000;
+  const dfs = (chain: Nd[], wantStrong: boolean, vis: Set<string>) => {
+    if (budget-- <= 0 || chain.length >= 12) return;
+    if (chain.length >= 4 && chain.length % 2 === 0) {
+      const A = chain[0], B = chain[chain.length - 1];
+      if (A.d === B.d) {
+        const elims: number[] = [];
+        for (let i = 0; i < 81; i++) {
+          if (!cand[i].includes(A.d)) continue;
+          if (A.cells.includes(i) || B.cells.includes(i)) continue;
+          if (A.cells.every(c => peersOf(c).includes(i)) && B.cells.every(c => peersOf(c).includes(i))) elims.push(i);
+        }
+        if (elims.length) results.push({ A, B, elims, len: chain.length });
+      }
+    }
+    const last = chain[chain.length - 1];
+    for (const next of nodes) {
+      if (next === last) continue;
+      const ok = wantStrong ? strong(last, next) : weak(last, next);
+      if (!ok) continue;
+      const k = next.cells.slice().sort((a, b) => a - b).join(',') + ':' + next.d + ':' + wantStrong;
+      if (vis.has(k)) continue;
+      vis.add(k); chain.push(next);
+      dfs(chain, !wantStrong, vis);
+      chain.pop(); vis.delete(k);
+    }
+  };
+  for (const start of nodes) for (const second of nodes) {
+    if (second === start || !strong(start, second)) continue;
+    const chain: Nd[] = [start, second];
+    const vis = new Set<string>();
+    vis.add(start.cells.slice().sort((a, b) => a - b).join(',') + ':' + start.d + ':true');
+    dfs(chain, false, vis);
+  }
+  if (!results.length) return null;
+  results.sort((a, b) => a.len - b.len || a.elims.length - b.elims.length);
+  const r = results[0];
+  return { tech: 'grouped-x-chain', desc: `Grouped X-chain on ${r.A.d}: ${r.A.cells.map(rcOf).join(',')} ... ${r.B.cells.map(rcOf).join(',')} removes ${r.A.d} from ${r.elims.map(rcOf).join(', ')}`, elim: { cells: r.elims, digits: [r.A.d] }, at: [...r.A.cells, ...r.B.cells] };
+}
+
 export function xychainStep(cand: number[][]): Hint | null {
   const bi = [...Array(81).keys()].filter(i => cand[i].length === 2);
   const nbr = (i: number) => bi.filter(j => j !== i && peersOf(i).includes(j) && cand[i].some(d => cand[j].includes(d)));
@@ -414,7 +500,7 @@ function tier2Probe(cand: number[][], uniq: boolean): Hint | null {
   return fishStep(cand) || skyscraperStep(cand) || kiteStep(cand) || coloringStep(cand) || xywingStep(cand) || wwingStep(cand) || xyzwingStep(cand) || (uniq ? urStep(cand) || bugStep(cand) : null);
 }
 function anyStep(cand: number[][], uniq: boolean): Hint | null {
-  return logicalStep(cand) || tier2Probe(cand, uniq) || xychainStep(cand) || alsxzStep(cand) || forcingStep(cand) || nishioStep(cand);
+  return logicalStep(cand) || tier2Probe(cand, uniq) || xychainStep(cand) || groupedxchainStep(cand) || alsxzStep(cand) || forcingStep(cand) || nishioStep(cand);
 }
 
 export function findContradiction(g: Grid): string | null {

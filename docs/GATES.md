@@ -81,3 +81,9 @@ board-inert). Mechanism open. Dedup lives at the render join only; never dedup
 elim.cells at source. ea880986 shipped parity-red; fixed forward, not rewritten.
 Harness scripts are excluded from tsc wholesale (scripts/**); they are validated
 by execution and by gates 1-9, not by the project typecheck.
+D17 grouped-x-chain (single-digit grouped AIC, Type 1) added at cls 3 between
+xychain and alsxz. First implementation caught unsound by the solution-referee
+(NEW_UNSOUND 11): vacuous cover in strong() — a house with zero candidates of
+the chain digit counted as covered, fabricating strong links. Fixed with a
+total>0 guard. Baseline re-recorded: 8 traces legitimately changed
+(#7,31,75,111,119,127,143,195), grades unchanged (GRADE_SHIFTS {}).
